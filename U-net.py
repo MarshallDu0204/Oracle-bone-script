@@ -389,7 +389,7 @@ class Unet:
 
 	def train(self,batch_size,path):
 
-		ckpt_path = path+"/ckpt/model.ckpt"
+		ckpt_path = path+"/ckpt-unet/model.ckpt"
 		
 		tf.summary.scalar("loss", self.loss_mean)
 		
@@ -480,7 +480,7 @@ class Unet:
 		data = newImg
 		data = np.reshape(a=data, newshape=(batch_size,96,96,1))
 
-		ckpt_path = path+"/ckpt/model.ckpt"
+		ckpt_path = path+"/ckpt-unet/model.ckpt"
 
 		all_parameters_saver = tf.train.Saver()
 		with tf.Session() as sess:  

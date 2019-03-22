@@ -249,8 +249,8 @@ class Unet:
 
 			#--------fully connect----
 
-			w_conv = self.weight_variable_alter([batch_size*12*12*128,4096])
-			b_conv = self.bias_variable([4096])
+			w_conv = self.weight_variable_alter([batch_size*12*12*128,1024])
+			b_conv = self.bias_variable([1024])
 
 			X = tf.nn.relu(tf.matmul(X,w_conv)+b_conv)
 
@@ -260,7 +260,7 @@ class Unet:
 
 			#--------fully connect------
 
-			w_conv = self.weight_variable_alter([4096,batch_size*12*12*128])
+			w_conv = self.weight_variable_alter([1024,batch_size*12*12*128])
 			b_conv = self.bias_variable([batch_size*12*12*128])
 
 			X = tf.nn.relu(tf.matmul(X,w_conv)+b_conv)
@@ -426,7 +426,7 @@ class Unet:
 
 	def train(self,batch_size,path):
 
-		ckpt_path = path+"/ckpt/model.ckpt"
+		ckpt_path = path+"/ckpt-dcign/model.ckpt"
 		
 		tf.summary.scalar("loss", self.loss_mean)
 		
@@ -517,7 +517,7 @@ class Unet:
 		data = newImg
 		data = np.reshape(a=data, newshape=(batch_size,96,96,1))
 
-		ckpt_path = path+"/ckpt/model.ckpt"
+		ckpt_path = path+"/ckpt-dcign/model.ckpt"
 
 		all_parameters_saver = tf.train.Saver()
 		with tf.Session() as sess:  
@@ -549,8 +549,8 @@ class Unet:
 def main():
 	basePath = "C:/Users/24400/Desktop"
 	unet = Unet()
-	unet.setup_network(32)
-	unet.train(32,basePath)
-	#unet.estimate(32,basePath)
+	unet.setup_network(8)
+	unet.train(8,basePath)
+	#unet.estimate(8,basePath)
 
 main()

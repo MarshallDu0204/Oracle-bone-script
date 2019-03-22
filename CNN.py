@@ -187,36 +187,36 @@ class CNN:
 
 			X = tf.nn.dropout(X,keep_prob = self.keep_prob)
 
-		#hidden layer 1  24*12*128 --> 4096
+		#hidden layer 1  24*12*128 --> 1024
 
 		with tf.name_scope('hidden_layer_1'):
 
 			#-------reshape---------
 
-			X = tf.reshape(X,[-1,24*12*128])
+			X = tf.reshape(X,[-1,batch_size*24*12*128])
 
-			w_conv = self.weight_variable([batch_size*24*12*128,4096])
-			b_conv = self.weight_variable([4096])
+			w_conv = self.weight_variable([batch_size*24*12*128,1024])
+			b_conv = self.weight_variable([1024])
 
 			X = tf.nn.relu(tf.matmul(X,w_conv)+b_conv)
 
-		#hidden layer 2  4096 --> 4096
+		#hidden layer 2  1024 --> 1024
 
 		with tf.name_scope('hidden_layer_2'):
 
 
-			w_conv = self.weight_variable([4096,4096])
-			b_conv = self.weight_variable([4096])
+			w_conv = self.weight_variable([1024,1024])
+			b_conv = self.weight_variable([1024])
 
 			X = tf.nn.relu(tf.matmul(X,w_conv)+b_conv)
 
 			X = tf.nn.dropout(X,keep_prob = self.keep_prob)
 
-		#final layer  4096 -- > 2
+		#final layer  1024 -- > 2
 
 		with tf.name_scope('final_layer'):
 
-			w_conv = self.weight_variable([4096,2])
+			w_conv = self.weight_variable([1024,2])
 			b_conv = self.bias_variable([2])
 
 			X = tf.nn.softmax(tf.matmul(X,w_conv)+b_conv)
@@ -391,8 +391,8 @@ def main():
 	basePath = "C:/Users/24400/Desktop"
 	cnn = CNN()
 	cnn.setup_network(16)
-	#cnn.train(16,basePath)
-	cnn.estimate(16,basePath)
+	cnn.train(16,basePath)
+	#cnn.estimate(16,basePath)
 
 
 
