@@ -248,132 +248,132 @@ class CNN:
 
 
 
-		def train(self,batch_size,path):
+	def train(self,batch_size,path):
 
-			ckpt_path = path+"/ckpt-cnn/model.ckpt"
+		ckpt_path = path+"/ckpt-cnn/model.ckpt"
 		
-			tf.summary.scalar("loss", self.loss)
+		tf.summary.scalar("loss", self.loss)
 			
-			tf.summary.scalar('accuracy', self.accurancy)
+		tf.summary.scalar('accuracy', self.accurancy)
 			
-			merged_summary = tf.summary.merge_all()
+		merged_summary = tf.summary.merge_all()
 
-			model_dir = path+"/data/model"
+		model_dir = path+"/data/model"
 
-			tb_dir = path+"/data/logs"
+		tb_dir = path+"/data/logs"
 
-			all_parameters_saver = tf.train.Saver()
-
-
-			with tf.Session() as sess:
-
-				image1,image2,label = readData_single()
-
-				image_batch1,image_batch2,label_batch = tf.train.shuffle_batch([image1,image2,label],batch_size = batch_size,num_threads = 4,capacity = 1012,min_after_dequeue = 1000)
+		all_parameters_saver = tf.train.Saver()
 
 
-				sess.run(tf.global_variables_initializer())
+		with tf.Session() as sess:
+
+			image1,image2,label = readData_single()
+
+			image_batch1,image_batch2,label_batch = tf.train.shuffle_batch([image1,image2,label],batch_size = batch_size,num_threads = 4,capacity = 1012,min_after_dequeue = 1000)
+
+
+			sess.run(tf.global_variables_initializer())
 				
-				sess.run(tf.local_variables_initializer())
+			sess.run(tf.local_variables_initializer())
 
-				summary_writer = tf.summary.FileWriter(tb_dir, sess.graph)
+			summary_writer = tf.summary.FileWriter(tb_dir, sess.graph)
 				
-				tf.summary.FileWriter(model_dir, sess.graph)
+			tf.summary.FileWriter(model_dir, sess.graph)
 				
-				coord = tf.train.Coordinator()
+			coord = tf.train.Coordinator()
 				
-				threads = tf.train.start_queue_runners(coord = coord)
+			threads = tf.train.start_queue_runners(coord = coord)
 
-				try:
+			try:
 
-					epoch = 1
+				epoch = 1
 
-					while not coord.should_stop():
-
-
-						example1,example2,label = sess.run([image_batch1,image_batch2,label_batch])
+				while not coord.should_stop():
 
 
-						lo,acc,summary = sess.run([self.loss,self.accurancy,merged_summary],feed_dict = {
-								self.input_image1:example1,self.input_image2:example2,self.input_label:label,self.keep_prob:0.7,self.lamb:0.004
-							})
-
-						summary_writer.add_summary(summary, epoch)
-
-						sess.run([self.train_step],feed_dict={
-								self.input_image1: example1,self.input_image2:example2,self.input_label: abel,self.keep_prob: 1.0,
-								self.lamb: 0.004
-							})
-
-						epoch+=1
-
-						if epoch%10 == 0:
-							print('num %d, loss: %.6f and accuracy: %.6f' % (epoch, lo, acc))
+					example1,example2,label = sess.run([image_batch1,image_batch2,label_batch])
 
 
-				except tf.errors.OutOfRangeError:
+					lo,acc,summary = sess.run([self.loss,self.accurancy,merged_summary],feed_dict = {
+							self.input_image1:example1,self.input_image2:example2,self.input_label:label,self.keep_prob:0.7,self.lamb:0.004
+						})
 
-					print('Done training -- epoch limit reached')	
+					summary_writer.add_summary(summary, epoch)
+
+					sess.run([self.train_step],feed_dict={
+							self.input_image1: example1,self.input_image2:example2,self.input_label: abel,self.keep_prob: 1.0,
+							self.lamb: 0.004
+						})
+
+					epoch+=1
+
+					if epoch%10 == 0:
+						print('num %d, loss: %.6f and accuracy: %.6f' % (epoch, lo, acc))
 
 
-				finally:
+			except tf.errors.OutOfRangeError:
 
-					all_parameters_saver.save(sess = sess,save_path = ckpt_path)
-					coord.request_stop()
-
-				coord.join(threads)
-
-				print("done training")
+				print('Done training -- epoch limit reached')	
 
 
-		def estimate(self,batch_size,path):
+			finally:
 
-			imgPath1 = path+"/J17522.jpg"
+				all_parameters_saver.save(sess = sess,save_path = ckpt_path)
+				coord.request_stop()
 
-			img1 = cv2.imdecode(np.fromfile(imgPath1,dtype=np.uint8),-1)
-			img1 = cv2.resize(src = img1,dsize=(96,96))
-			img1 = convertToBinary(img1)
+			coord.join(threads)
 
-			data1 = img1
+			print("done training")
+
+
+	def estimate(self,batch_size,path):
+
+		imgPath1 = path+"/J17522.jpg"
+
+		img1 = cv2.imdecode(np.fromfile(imgPath1,dtype=np.uint8),-1)
+		img1 = cv2.resize(src = img1,dsize=(96,96))
+		img1 = convertToBinary(img1)
+
+		data1 = img1
 			
 
-			newImg1 = []
+		newImg1 = []
 
-			i=0
-			while i!=batch_size:
-				newImg1.append(data1)
-				i+=1
+		i=0
+		while i!=batch_size:
+			newImg1.append(data1)
+			i+=1
 
-			data1 = np.reshape(a=newImg1, newshape=(batch_size,96,96,1))
+		data1 = np.reshape(a=newImg1, newshape=(batch_size,96,96,1))
 
-			imgPath2 = path+"/J17538.jpg"
+		imgPath2 = path+"/J17538.jpg"
 
-			img2 = cv2.imdecode(np.fromfile(imgPath2,dtype=np.uint8),-1)
-			img2 = cv2.resize(src = img2,dsize=(96,96))
-			img2 = convertToBinary(img2)
+		img2 = cv2.imdecode(np.fromfile(imgPath2,dtype=np.uint8),-1)
+		img2 = cv2.resize(src = img2,dsize=(96,96))
+		img2 = convertToBinary(img2)
 
-			data2 = img2
+		data2 = img2
 
-			newImg2 = []
+		newImg2 = []
 
-			i=0
-			while i!=batch_size:
-				newImg2.append(data2)
-				i+=1
+		i=0
+		while i!=batch_size:
+			newImg2.append(data2)
+			i+=1
 			
-			data2 = np.reshape(a=newImg2, newshape=(batch_size,96,96,1))
+		data2 = np.reshape(a=newImg2, newshape=(batch_size,96,96,1))
 
 
 
-			ckpt_path = path+"/ckpt-cnn/model.ckpt"
+		ckpt_path = path+"/ckpt-cnn/model.ckpt"
 
-			all_parameters_saver = tf.train.Saver()
+		all_parameters_saver = tf.train.Saver()
 
-			with tf.Session() as sess:  
-				sess.run(tf.global_variables_initializer())
-				sess.run(tf.local_variables_initializer())
-				all_parameters_saver.restore(sess=sess, save_path=ckpt_path)
-				predict_result = sess.run(
+		with tf.Session() as sess:  
+			sess.run(tf.global_variables_initializer())
+			sess.run(tf.local_variables_initializer())
+			all_parameters_saver.restore(sess=sess, save_path=ckpt_path)
+			predict_result = sess.run(
 								tf.argmax(input=self.prediction, axis=3), 
 								feed_dict={
 									self.input_image1: data1,self.input_image2:data2
@@ -381,10 +381,10 @@ class CNN:
 								}
 							)
 
-				predict_result = predict_result[0]
+			predict_result = predict_result[0]
 				
-				print(predict_result) 
-			print('Done prediction')
+			print(predict_result) 
+		print('Done prediction')
 
 
 def main():
