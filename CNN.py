@@ -19,7 +19,7 @@ def augment(img):
 def convertToBinary(img):
 	axis = []
 	for x in img:
-		element = []	
+		element = []
 		for y in x:
 			if y[0]<150:
 				element.append(1)
@@ -65,18 +65,18 @@ def readData_single(path):
 	features = tf.parse_single_example(serialized_example,features = {
 			'img1': tf.FixedLenFeature([], tf.string),
 			'img2': tf.FixedLenFeature([], tf.string),
-			'label': tf.FixedLenFeature([], tf.int32)
+			'label': tf.FixedLenFeature([], tf.int64)
 		})
 
 	image1 = tf.decode_raw(features['img1'],tf.uint8)
 
-	image1 = tf.reshape(image,[96,96,1])
+	image1 = tf.reshape(image1,[96,96,1])
 
 	image2 = tf.decode_raw(features['img2'],tf.uint8)
 
-	image2 = tf.reshape(image,[96,96,1])
+	image2 = tf.reshape(image2,[96,96,1])
 
-	label = tf.cast(features['label'], tf.int32)
+	label = tf.cast(features['label'], tf.int64)
 
 	return image1,image2,label
 
@@ -89,6 +89,12 @@ class CNN:
 		self.input_image2 = None
 
 		self.label = None
+
+		self.input_image1 = None
+
+		self.input_image2 = None
+
+		self.input_label = None
 
 		self.keep_prob = tf.placeholder(dtype=tf.float32)
 
@@ -107,6 +113,11 @@ class CNN:
 		
 	def weight_variable(self,shape):
 	    initial = tf.truncated_normal(shape,stddev=tf.sqrt(x = 2/(shape[0]*shape[1]*shape[2])))
+	    tf.add_to_collection(name = 'loss',value=tf.contrib.layers.l2_regularizer(self.lamb)(initial))   
+	    return tf.Variable(initial)
+
+	def weight_variable_alter(self,shape):
+	    initial = tf.truncated_normal(shape,stddev=0.015)
 	    tf.add_to_collection(name = 'loss',value=tf.contrib.layers.l2_regularizer(self.lamb)(initial))   
 	    return tf.Variable(initial)
 
@@ -131,7 +142,7 @@ class CNN:
 
 		self.input_image2 = tf.placeholder(dtype = tf.float32,shape = [batch_size,96,96,1])
 
-		self.label = tf.placeholder(dtype = tf.float32,shape = [batch_size,2])
+		self.input_label = tf.placeholder(dtype = tf.float32,shape = [batch_size,2])
 
 		#2*96*96*1 --> 192*96*1 --> 96*48*32
 
@@ -139,7 +150,7 @@ class CNN:
 
 			#-------merge img1 and img2 -----------
 
-			mergeImg = self.merge_img(input_image1,input_image2)
+			mergeImg = self.merge_img(self.input_image1,self.input_image2)
 
 			X = mergeImg
 
@@ -148,7 +159,7 @@ class CNN:
 			w_conv = self.weight_variable([3,3,1,32])
 			b_conv = self.bias_variable([32])
 
-			X = tf.nn.relu(conv2d(X,w_conv)+b_conv)
+			X = tf.nn.relu(self.conv2d(X,w_conv)+b_conv)
 
 			#----- maxpooling ---------
 
@@ -164,7 +175,7 @@ class CNN:
 			w_conv = self.weight_variable([3,3,32,64])
 			b_conv = self.bias_variable([64])
 
-			X = tf.nn.relu(conv2d(X,w_conv)+b_conv)
+			X = tf.nn.relu(self.conv2d(X,w_conv)+b_conv)
 
 			#-------maxpooling----------
 
@@ -179,7 +190,7 @@ class CNN:
 			w_conv = self.weight_variable([3,3,64,128])
 			b_conv = self.bias_variable([128])
 
-			X = tf.nn.relu(conv2d(X,w_conv)+b_conv)
+			X = tf.nn.relu(self.conv2d(X,w_conv)+b_conv)
 
 			#-------maxpooling----------
 
@@ -195,8 +206,8 @@ class CNN:
 
 			X = tf.reshape(X,[-1,batch_size*24*12*128])
 
-			w_conv = self.weight_variable([batch_size*24*12*128,1024])
-			b_conv = self.weight_variable([1024])
+			w_conv = self.weight_variable_alter([batch_size*24*12*128,1024])
+			b_conv = self.bias_variable([1024])
 
 			X = tf.nn.relu(tf.matmul(X,w_conv)+b_conv)
 
@@ -205,8 +216,8 @@ class CNN:
 		with tf.name_scope('hidden_layer_2'):
 
 
-			w_conv = self.weight_variable([1024,1024])
-			b_conv = self.weight_variable([1024])
+			w_conv = self.weight_variable_alter([1024,1024])
+			b_conv = self.bias_variable([1024])
 
 			X = tf.nn.relu(tf.matmul(X,w_conv)+b_conv)
 
@@ -216,10 +227,12 @@ class CNN:
 
 		with tf.name_scope('final_layer'):
 
-			w_conv = self.weight_variable([1024,2])
+			w_conv = self.weight_variable_alter([1024,2])
 			b_conv = self.bias_variable([2])
 
 			X = tf.nn.softmax(tf.matmul(X,w_conv)+b_conv)
+
+			self.prediction = X
 
 
 
@@ -227,18 +240,15 @@ class CNN:
 
 		with tf.name_scope('softmax'):
 
-			self.loss = tf.reduce_mean(-tf.reduce_sum(input_label*tf.log(X),axis=1))
+			self.loss = tf.reduce_mean(-tf.reduce_sum(self.input_label*tf.log(self.prediction),axis=1))
 
 
 	    #accurancy
+		with tf.name_scope('accurancy'):
+			
+			self.correct_prediction = tf.equal(tf.argmax(self.prediction,1),tf.argmax(self.input_label,1)) 
 
-	    with tf.name_scope('accurancy'):
-
-	    	self.correct_prediction = tf.equal(tf.argmax(X,1),tf.argmax(input_label,1)) 
-
-			self.accurancy = tf.reduce_mean(tf.cast(correct_prediction,tf.float32)) 
-
-
+			self.accurancy = tf.reduce_mean(tf.cast(self.correct_prediction,tf.float32)) 
 
 		#optimize
 
@@ -267,7 +277,7 @@ class CNN:
 
 		with tf.Session() as sess:
 
-			image1,image2,label = readData_single()
+			image1,image2,label = readData_single(path)
 
 			image_batch1,image_batch2,label_batch = tf.train.shuffle_batch([image1,image2,label],batch_size = batch_size,num_threads = 4,capacity = 1012,min_after_dequeue = 1000)
 
@@ -376,7 +386,7 @@ class CNN:
 			predict_result = sess.run(
 								tf.argmax(input=self.prediction, axis=3), 
 								feed_dict={
-									self.input_image1: data1,self.input_image2:data2
+									self.input_image1: data1,self.input_image2:data2,
 									self.keep_prob: 1.0, self.lamb: 0.004
 								}
 							)
@@ -390,10 +400,8 @@ class CNN:
 def main():
 	basePath = "C:/Users/24400/Desktop"
 	cnn = CNN()
-	cnn.setup_network(16)
-	cnn.train(16,basePath)
+	cnn.setup_network(8)
+	cnn.train(8,basePath)
 	#cnn.estimate(16,basePath)
 
-
-
-		
+main()

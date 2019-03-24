@@ -20,7 +20,7 @@ def augment(img):
 def convertToBinary(img):
 	axis = []
 	for x in img:
-		element = []	
+		element = []
 		for y in x:
 			if y[0]<150:
 				element.append(1)

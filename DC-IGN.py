@@ -20,7 +20,7 @@ def augment(img):
 def convertToBinary(img):
 	axis = []
 	for x in img:
-		element = []	
+		element = []
 		for y in x:
 			if y[0]<150:
 				element.append(1)
@@ -81,7 +81,7 @@ def readData_single(path):
 	return image,label
 	
 
-class Unet:
+class DCIGN:
 
 	def __init__(self):
 	
@@ -548,9 +548,10 @@ class Unet:
 
 def main():
 	basePath = "C:/Users/24400/Desktop"
-	unet = Unet()
-	unet.setup_network(8)
-	unet.train(8,basePath)
-	#unet.estimate(8,basePath)
+	dcign = DCIGN()
+	dcign.setup_network(8)
+	dcign.train(8,basePath)
+	#dcign.estimate(8,basePath)
+	
 
 main()
