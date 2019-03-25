@@ -3,18 +3,6 @@ import numpy as np
 import cv2
 from PIL import Image as Ige
 
-def augment(img):
-	i=1
-	while i!=95:
-		j=1
-		while j!=95:
-			if img[i][j]==1:
-				img[i-1][j]=1
-				img[i+1][j]=1
-				img[i][j-1]=1
-				img[i][j+1]=1
-			j+=1
-		i+=1
 
 def convertToBinary(img):
 	axis = []
@@ -27,28 +15,6 @@ def convertToBinary(img):
 				element.append(0)
 		element = np.array(element,dtype = 'uint8')
 		axis.append(element)
-	axis = np.array(axis)
-	return axis
-
-def binaryToImg(bin):
-	axis = []
-	for xAxis in bin:
-		element = []
-		for yAxis in xAxis:
-			temp = []
-			if yAxis == 1:
-				temp.append(0)
-				temp.append(0)
-				temp.append(0)
-			else:
-				temp.append(255)
-				temp.append(255)
-				temp.append(255)
-			temp = np.array(temp,dtype = 'uint8')
-			element.append(temp)
-		element = np.array(element)
-		axis.append(element)
-
 	axis = np.array(axis)
 	return axis
 
@@ -76,7 +42,7 @@ def readData_single(path):
 
 	image2 = tf.reshape(image2,[96,96,1])
 
-	label = tf.cast(features['label'], tf.int64)
+	label = tf.cast(features['label'], tf.int32)
 
 	return image1,image2,label
 
@@ -110,16 +76,23 @@ class CNN:
 
 		self.train_step = None
 
+
+	def one_hot(self,labels,Label_class):
+		one_hot_label = np.array([[int(i == int(labels[j])) for i in range(Label_class)] for j in range(len(labels))])   
+		return one_hot_label
+
 		
 	def weight_variable(self,shape):
 	    initial = tf.truncated_normal(shape,stddev=tf.sqrt(x = 2/(shape[0]*shape[1]*shape[2])))
 	    tf.add_to_collection(name = 'loss',value=tf.contrib.layers.l2_regularizer(self.lamb)(initial))   
 	    return tf.Variable(initial)
 
+
 	def weight_variable_alter(self,shape):
 	    initial = tf.truncated_normal(shape,stddev=0.015)
 	    tf.add_to_collection(name = 'loss',value=tf.contrib.layers.l2_regularizer(self.lamb)(initial))   
 	    return tf.Variable(initial)
+
 
 	def bias_variable(self,shape):
 	    initial = tf.random_normal(shape=shape,dtype = tf.float32)
@@ -196,27 +169,16 @@ class CNN:
 
 			X = self.max_pooling(X)
 
-			X = tf.nn.dropout(X,keep_prob = self.keep_prob)
-
+			
 		#hidden layer 1  24*12*128 --> 1024
 
 		with tf.name_scope('hidden_layer_1'):
 
 			#-------reshape---------
 
-			X = tf.reshape(X,[-1,batch_size*24*12*128])
+			X = tf.reshape(X,[batch_size,24*12*128])
 
-			w_conv = self.weight_variable_alter([batch_size*24*12*128,1024])
-			b_conv = self.bias_variable([1024])
-
-			X = tf.nn.relu(tf.matmul(X,w_conv)+b_conv)
-
-		#hidden layer 2  1024 --> 1024
-
-		with tf.name_scope('hidden_layer_2'):
-
-
-			w_conv = self.weight_variable_alter([1024,1024])
+			w_conv = self.weight_variable_alter([24*12*128,1024])
 			b_conv = self.bias_variable([1024])
 
 			X = tf.nn.relu(tf.matmul(X,w_conv)+b_conv)
@@ -235,12 +197,11 @@ class CNN:
 			self.prediction = X
 
 
-
 		#softmax loss
 
 		with tf.name_scope('softmax'):
 
-			self.loss = tf.reduce_mean(-tf.reduce_sum(self.input_label*tf.log(self.prediction),axis=1))
+			self.loss = tf.reduce_mean(-tf.reduce_sum(self.input_label*tf.log(self.prediction),reduction_indices=[1]))
 
 
 	    #accurancy
@@ -303,15 +264,17 @@ class CNN:
 
 					example1,example2,label = sess.run([image_batch1,image_batch2,label_batch])
 
+					label = self.one_hot(label,2)
+
 
 					lo,acc,summary = sess.run([self.loss,self.accurancy,merged_summary],feed_dict = {
-							self.input_image1:example1,self.input_image2:example2,self.input_label:label,self.keep_prob:0.7,self.lamb:0.004
+							self.input_image1:example1,self.input_image2:example2,self.input_label:label,self.keep_prob:0.5,self.lamb:0.004
 						})
 
 					summary_writer.add_summary(summary, epoch)
 
 					sess.run([self.train_step],feed_dict={
-							self.input_image1: example1,self.input_image2:example2,self.input_label: abel,self.keep_prob: 1.0,
+							self.input_image1: example1,self.input_image2:example2,self.input_label:label,self.keep_prob: 1.0,
 							self.lamb: 0.004
 						})
 
@@ -384,7 +347,7 @@ class CNN:
 			sess.run(tf.local_variables_initializer())
 			all_parameters_saver.restore(sess=sess, save_path=ckpt_path)
 			predict_result = sess.run(
-								tf.argmax(input=self.prediction, axis=3), 
+								tf.argmax(input=self.prediction, axis=1), 
 								feed_dict={
 									self.input_image1: data1,self.input_image2:data2,
 									self.keep_prob: 1.0, self.lamb: 0.004
@@ -400,8 +363,8 @@ class CNN:
 def main():
 	basePath = "C:/Users/24400/Desktop"
 	cnn = CNN()
-	cnn.setup_network(8)
-	cnn.train(8,basePath)
-	#cnn.estimate(16,basePath)
+	cnn.setup_network(64)
+	cnn.train(64,basePath)
+	#cnn.estimate(64,basePath)
 
 main()

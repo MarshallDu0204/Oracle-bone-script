@@ -245,11 +245,11 @@ class DCIGN:
 
 			#--------reshape--------
 
-			X = tf.reshape(X,[-1,batch_size*12*12*128])
+			X = tf.reshape(X,[batch_size,12*12*128])
 
 			#--------fully connect----
 
-			w_conv = self.weight_variable_alter([batch_size*12*12*128,1024])
+			w_conv = self.weight_variable_alter([12*12*128,1024])
 			b_conv = self.bias_variable([1024])
 
 			X = tf.nn.relu(tf.matmul(X,w_conv)+b_conv)
@@ -260,8 +260,8 @@ class DCIGN:
 
 			#--------fully connect------
 
-			w_conv = self.weight_variable_alter([1024,batch_size*12*12*128])
-			b_conv = self.bias_variable([batch_size*12*12*128])
+			w_conv = self.weight_variable_alter([1024,12*12*128])
+			b_conv = self.bias_variable([12*12*128])
 
 			X = tf.nn.relu(tf.matmul(X,w_conv)+b_conv)
 
@@ -549,9 +549,9 @@ class DCIGN:
 def main():
 	basePath = "C:/Users/24400/Desktop"
 	dcign = DCIGN()
-	dcign.setup_network(8)
-	dcign.train(8,basePath)
-	#dcign.estimate(8,basePath)
+	dcign.setup_network(32)
+	dcign.train(32,basePath)
+	#dcign.estimate(32,basePath)
 	
 
 main()
