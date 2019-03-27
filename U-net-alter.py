@@ -121,6 +121,10 @@ class Unet:
 	    initial = tf.random_normal(shape=shape,dtype = tf.float32)
 	    return tf.Variable(initial_value = initial)
 
+	def weight_variable_alter(self,shape):
+	    initial = tf.truncated_normal(shape,stddev=0.015)
+	    tf.add_to_collection(name = 'loss',value=tf.contrib.layers.l2_regularizer(self.lamb)(initial))   
+	    return tf.Variable(initial)
 
 	def conv2d(self,x,W):
 	    return tf.nn.conv2d(x,W,strides=[1,1,1,1],padding = 'SAME')
@@ -270,11 +274,26 @@ class Unet:
 
 		with tf.name_scope('first_deconvolution'):
 
+			#transfer the matrix
+
+			w_conv = self.weight_variable_alter([24*24*128,1])
+			b_conv = self.bias_variable([24*24*128])
+
+			tempMatrix = self.unPooling[2]
+
+			tempMatrix = tf.reshape(tempMatrix,[batch_size,24*24*128])
+
+			#tempMatrix = tf.matmul(tempMatrix,w_conv)+b_conv
+
+			tempMatrix = tf.nn.relu(tf.matmul(tempMatrix,w_conv)+b_conv)
+
+			tempMatrix = tf.reshape(tempMatrix,[batch_size,24,24,128])
+
+
+			X = self.merge_img(tempMatrix,X)
+
 			#first deconvolution
-
-			X = self.merge_img(self.unPooling[2],X)
 			
-
 			w_conv = self.weight_variable([4,4,256,128])
 			b_conv = self.bias_variable([128])
 
@@ -301,9 +320,25 @@ class Unet:
 
 		with tf.name_scope('second_deconvolution'):
 
-			# second deconvolution
+			#transfer the matrix
 
-			X = self.merge_img(self.unPooling[1],X)
+			w_conv = self.weight_variable_alter([48*48*64,1])
+			b_conv = self.bias_variable([48*48*64])
+
+			tempMatrix = self.unPooling[1]
+
+			tempMatrix = tf.reshape(tempMatrix,[batch_size,48*48*64])
+
+			#tempMatrix = tf.matmul(tempMatrix,w_conv)+b_conv
+
+			tempMatrix = tf.nn.relu(tf.matmul(tempMatrix,w_conv)+b_conv)
+
+			tempMatrix = tf.reshape(tempMatrix,[batch_size,48,48,64])
+
+
+			X = self.merge_img(tempMatrix,X)
+
+			# second deconvolution
 
 			w_conv = self.weight_variable([4,4,128,64])
 			b_conv = self.bias_variable([64])
@@ -333,9 +368,25 @@ class Unet:
 
 		with tf.name_scope('final_layer'):
 
-			#final layer
+			#transfer the matrix
 
-			X = self.merge_img(self.unPooling[0],X)
+			w_conv = self.weight_variable_alter([96*96*32,1])
+			b_conv = self.bias_variable([96*96*32])
+
+			tempMatrix = self.unPooling[0]
+
+			tempMatrix = tf.reshape(tempMatrix,[batch_size,96*96*32])
+
+			#tempMatrix = tf.matmul(tempMatrix,w_conv)+b_conv
+
+			tempMatrix = tf.nn.relu(tf.matmul(tempMatrix,w_conv)+b_conv)
+
+			tempMatrix = tf.reshape(tempMatrix,[batch_size,96,96,32])
+
+
+			X = self.merge_img(tempMatrix,X)
+
+			#final layer
 
 			w_conv = self.weight_variable([4,4,64,32])
 			b_conv = self.bias_variable([32])
