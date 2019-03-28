@@ -56,8 +56,8 @@ def binaryToImg(bin):
 
 
 
-def readData_single(path):
-	path = path+"/train_set_Unet.tfrecords"
+def readData_encode(path):
+	path = path+"/train_set_dcign_encode.tfrecords"
 
 	filename_queue = tf.train.string_input_producer([path],num_epochs = 1,shuffle = True)
 
@@ -74,11 +74,33 @@ def readData_single(path):
 
 	image = tf.reshape(image,[96,96,1])
 
+	label = tf.cast(features['label'], tf.int32)
+
+	return image,label
+
+
+
+def readData_decode(path):
+	path = path+"/train_set_dcign_decode.tfrecords"
+
+	filename_queue = tf.train.string_input_producer([path],num_epochs = 1,shuffle = True)
+
+	reader = tf.TFRecordReader()
+
+	_,serialized_example = reader.read(filename_queue)
+
+	features = tf.parse_single_example(serialized_example,features = {
+			'index': tf.FixedLenFeature([], tf.string),
+			'label': tf.FixedLenFeature([], tf.string)
+		})
+
+	index = tf.cast(features['index'], tf.int32)
+
 	label = tf.decode_raw(features['label'],tf.uint8)
 
 	label = tf.reshape(label,[96,96])
 
-	return image,label
+	return index,label
 	
 
 class DCIGN:
@@ -89,9 +111,9 @@ class DCIGN:
 
 		self.lamb = tf.placeholder(dtype = tf.float32)
 
-		self.unPooling = []
-
 		self.input_image = None
+
+		self.input_index = None
 
 		self.input_label = None
 
@@ -109,7 +131,14 @@ class DCIGN:
 
 		self.train_step = None
 
+		self.input_label_num = 22
 
+		self.output_label_num = 22
+
+
+	def one_hot(self,labels):
+		one_hot_label = np.array([[int(i == int(labels[j])) for i in range(self.input_label_num)] for j in range(len(labels))])   
+		return one_hot_label
 
 	def weight_variable(self,shape):
 	    initial = tf.truncated_normal(shape,stddev=tf.sqrt(x = 2/(shape[0]*shape[1]*shape[2])))
@@ -139,11 +168,11 @@ class DCIGN:
 	def merge_img(self,convo_layer,unsampling):
 		return tf.concat(values = [convo_layer,unsampling],axis = -1)
 
-	def setup_network(self,batch_size):
+	def setup_encode_network(self,batch_size):
 
 		self.input_image = tf.placeholder(dtype = tf.float32,shape = [batch_size,96,96,1])
 
-		self.input_label = tf.placeholder(dtype = tf.int32,shape = [batch_size,96,96])
+		self.input_label = tf.placeholder(dtype = tf.float32,shape = [batch_size,self.input_label_num])
 
 
 		#first convolution 96*96*1 -->48*48*32
@@ -167,8 +196,6 @@ class DCIGN:
 			img_conv = tf.nn.relu(self.conv2d(X,w_conv)+b_conv)
 
 			X = img_conv
-
-			self.unPooling.append(X)
 
 			#---------maxpool--------
 
@@ -198,14 +225,11 @@ class DCIGN:
 
 			X = img_conv
 
-			self.unPooling.append(X)
-
 			#---------maxpool--------
 
 			img_pool = self.max_pooling(img_conv)
 
 			X = img_pool
-
 
 
 		#third convolution 24*24*64 -->12*12*128 
@@ -229,8 +253,6 @@ class DCIGN:
 
 			X = img_conv
 
-			self.unPooling.append(X)
-
 			#---------maxpool--------
 
 			img_pool = self.max_pooling(img_conv)
@@ -239,7 +261,8 @@ class DCIGN:
 
 			#X = tf.nn.dropout(X,keep_prob = self.keep_prob)
 
-		#hidden layer 1
+
+		#hidden layer 1  12*12*128 --> 1024
 
 		with tf.name_scope('hidden_layer_1'):
 
@@ -254,28 +277,68 @@ class DCIGN:
 
 			X = tf.nn.relu(tf.matmul(X,w_conv)+b_conv)
 
-		#hidden layer 2
+			X = tf.nn.dropout(X,keep_prob = self.keep_prob)
 
-		with tf.name_scope('hidden_layer_2'):
 
-			#--------fully connect------
+		#final layer 1024 --> input_label_num
 
-			w_conv = self.weight_variable_alter([1024,12*12*128])
+		with tf.name_scope('final_layer'):
+
+			w_conv = self.weight_variable_alter([1024,self.input_label_num])
+			b_conv = self.bias_variable([self.input_label_num])
+
+			X = tf.nn.softmax(tf.matmul(X,w_conv)+b_conv)
+
+			self.prediction = X
+
+		#softmax loss
+
+		with tf.name_scope('softmax'):
+
+			self.loss = tf.reduce_mean(-tf.reduce_sum(self.input_label*tf.log(self.prediction),reduction_indices=[1]))
+
+
+	    #accurancy
+		with tf.name_scope('accurancy'):
+			
+			self.correct_prediction = tf.equal(tf.argmax(self.prediction,1),tf.argmax(self.input_label,1)) 
+
+			self.accurancy = tf.reduce_mean(tf.cast(self.correct_prediction,tf.float32)) 
+
+		#optimize
+
+		with tf.name_scope('gradient_descent'):
+
+			self.train_step = tf.train.AdamOptimizer(learning_rate=0.0001).minimize(self.loss)
+
+
+	def setup_decode_network(self,batch_size):
+
+		self.input_image = tf.placeholder(dtype = tf.float32,shape = [batch_size,self.output_label_num])
+
+		self.input_label = tf.placeholder(dtype = tf.int32,shape = [batch_size,96,96])
+
+
+		#hidden_layer output_label_num --> 12*12*128
+
+		with tf.name_scope('hidden_layer_1'):
+
+			w_conv = self.weight_variable_alter([self.output_label_num,12*12*128])
 			b_conv = self.bias_variable([12*12*128])
 
-			X = tf.nn.relu(tf.matmul(X,w_conv)+b_conv)
-
-			#--------reshape back--------
-
-			X = tf.reshape(X,[batch_size,12,12,128])
+			X = tf.nn.relu(tf.matmul(self.input_image,w_conv)+b_conv)
 
 			X = tf.nn.dropout(X,keep_prob = self.keep_prob)
 
 
-		#bottom convolution 12*12*128 --->24*24*128
+		#first deconvolution 12*12*128 --->24*24*128
 
 		
-		with tf.name_scope('bottom_convolution'):
+		with tf.name_scope('first_deconvolution'):
+
+			#--------resize----------
+
+			X = tf.reshape(X,[batch_size,12,12,128])
 
 			#---------conv1----------
 
@@ -300,56 +363,53 @@ class DCIGN:
 
 
 			img_deconv = tf.nn.relu(self.deconv(img_conv,w_conv,[batch_size,24,24,128])+b_conv)
-			X = img_deconv
-
-			X = tf.nn.dropout(X,keep_prob = self.keep_prob)
-
-
-		with tf.name_scope('first_deconvolution'):
-
-			#first deconvolution
-
-			X = self.merge_img(self.unPooling[2],X)
-			
-
-			w_conv = self.weight_variable([4,4,256,128])
-			b_conv = self.bias_variable([128])
-
-			img_deconv = tf.nn.relu(self.conv2d(X,w_conv)+b_conv)
-
-			X = img_deconv
-
-			w_conv = self.weight_variable([4,4,128,128])
-			b_conv = self.bias_variable([128])
-
-			img_deconv = tf.nn.relu(self.conv2d(X,w_conv)+b_conv)
-
-			X = img_deconv
-
-			w_conv = self.weight_variable([2,2,64,128])
-			b_conv = self.bias_variable([64])
-
-
-			img_deconv = tf.nn.relu(self.deconv(img_deconv,w_conv,[batch_size,48,48,64])+b_conv)
 
 
 			X = img_deconv
+
+			#X = tf.nn.dropout(X,keep_prob = self.keep_prob)
 
 
 		with tf.name_scope('second_deconvolution'):
 
-			# second deconvolution
+			#second deconvolution			
 
-			X = self.merge_img(self.unPooling[1],X)
-
-			w_conv = self.weight_variable([4,4,128,64])
+			w_conv = self.weight_variable([3,3,128,64])
 			b_conv = self.bias_variable([64])
 
 			img_deconv = tf.nn.relu(self.conv2d(X,w_conv)+b_conv)
 
 			X = img_deconv
 
-			w_conv = self.weight_variable([4,4,64,64])
+			w_conv = self.weight_variable([3,3,64,64])
+			b_conv = self.bias_variable([64])
+
+			img_deconv = tf.nn.relu(self.conv2d(X,w_conv)+b_conv)
+
+			X = img_deconv
+
+			w_conv = self.weight_variable([2,2,32,64])
+			b_conv = self.bias_variable([32])
+
+
+			img_deconv = tf.nn.relu(self.deconv(img_deconv,w_conv,[batch_size,48,48,32])+b_conv)
+
+
+			X = img_deconv
+
+
+		with tf.name_scope('third_deconvolution'):
+
+			# third deconvolution
+
+			w_conv = self.weight_variable([3,3,32,64])
+			b_conv = self.bias_variable([64])
+
+			img_deconv = tf.nn.relu(self.conv2d(X,w_conv)+b_conv)
+
+			X = img_deconv
+
+			w_conv = self.weight_variable([3,3,64,64])
 			b_conv = self.bias_variable([64])
 
 			img_deconv = tf.nn.relu(self.conv2d(X,w_conv)+b_conv)
@@ -365,30 +425,28 @@ class DCIGN:
 
 			X = img_deconv
 
-			#X = tf.nn.dropout(X,keep_prob = self.keep_prob)
+			X = tf.nn.dropout(X,keep_prob = self.keep_prob)
 
 
 		with tf.name_scope('final_layer'):
 
 			#final layer
 
-			X = self.merge_img(self.unPooling[0],X)
-
-			w_conv = self.weight_variable([4,4,64,32])
-			b_conv = self.bias_variable([32])
+			w_conv = self.weight_variable([3,3,32,16])
+			b_conv = self.bias_variable([16])
 
 			img_deconv = tf.nn.relu(self.conv2d(X,w_conv)+b_conv)
 
 			X = img_deconv
 
-			w_conv = self.weight_variable([4,4,32,32])
-			b_conv = self.bias_variable([32])
+			w_conv = self.weight_variable([3,3,16,16])
+			b_conv = self.bias_variable([16])
 
 			img_deconv = tf.nn.relu(self.conv2d(X,w_conv)+b_conv)
 
 			X = img_deconv
 
-			w_conv = self.weight_variable([1,1,32,2])
+			w_conv = self.weight_variable([1,1,16,2])
 			b_conv = self.bias_variable([2])
 
 			img_deconv = tf.nn.conv2d(input = X,filter = w_conv,strides = [1,1,1,1],padding = 'VALID')
@@ -424,10 +482,10 @@ class DCIGN:
 
 
 
-	def train(self,batch_size,path):
+	def train(self,batch_size,path,mode):
 
-		ckpt_path = path+"/ckpt-dcign/model.ckpt"
-		
+		ckpt_path = None
+
 		tf.summary.scalar("loss", self.loss_mean)
 		
 		tf.summary.scalar('accuracy', self.accurancy)
@@ -444,7 +502,20 @@ class DCIGN:
 
 		with tf.Session() as sess:
 
-			image,label = readData_single(path)
+			image,label = None
+
+			if mode == 0:
+
+				image,label = readData_encode(path)
+
+				ckpt_path = path+"/ckpt-dcign-encode/model.ckpt"
+
+			else:
+
+				image,label = readData_decode(path)
+
+				ckpt_path = path+"/ckpt-dcign-decode/model.ckpt"
+		
 
 			image_batch,label_batch = tf.train.shuffle_batch([image,label],batch_size = batch_size,num_threads = 4,capacity = 1012,min_after_dequeue = 1000)
 
@@ -484,7 +555,6 @@ class DCIGN:
 
 					epoch+=1
 
-
 					if epoch%10 == 0:
 						print('num %d, loss: %.6f and accuracy: %.6f' % (epoch, lo, acc))
 
@@ -503,7 +573,7 @@ class DCIGN:
 
 
 
-	def estimate(self,batch_size,path):
+	def estimate_encode(self,batch_size,path):
 		imgPath = path+"/J17522.jpg"
 
 		img = cv2.imdecode(np.fromfile(imgPath,dtype=np.uint8),-1)
@@ -517,29 +587,53 @@ class DCIGN:
 		data = newImg
 		data = np.reshape(a=data, newshape=(batch_size,96,96,1))
 
-		ckpt_path = path+"/ckpt-dcign/model.ckpt"
+		ckpt_path = path+"/ckpt-dcign-encode/model.ckpt"
 
 		all_parameters_saver = tf.train.Saver()
 		with tf.Session() as sess:  
 			sess.run(tf.global_variables_initializer())
 			sess.run(tf.local_variables_initializer())
 			all_parameters_saver.restore(sess=sess, save_path=ckpt_path)
-			predict_image = sess.run(
-							tf.argmax(input=self.prediction, axis=3), 
+			predict_result = sess.run(
+							tf.argmax(input=self.prediction, axis=1), 
 							feed_dict={
 								self.input_image: data,
 								self.keep_prob: 1.0, self.lamb: 0.004
 							}
 						)
 			
-			predict_image = predict_image[0]
-
-			augment(predict_image)
+			predict_result = predict_result[0]
+			print(predict_result)
 			
-			predict_image = binaryToImg(predict_image)
-			predict_image = Ige.fromarray(predict_image,'RGB')
-			predict_image.save('predict_image.jpg')
-			predict_image.show() 
+			
+		print('Done prediction')
+
+		def estimate_decode(self,batch_size,input):
+			data = input
+
+			ckpt_path = path+"/ckpt-dcign-decode/model.ckpt"
+
+			all_parameters_saver = tf.train.Saver()
+			with tf.Session() as sess:  
+				sess.run(tf.global_variables_initializer())
+				sess.run(tf.local_variables_initializer())
+				all_parameters_saver.restore(sess=sess, save_path=ckpt_path)
+				predict_result = sess.run(
+								tf.argmax(input=self.prediction, axis=3), 
+								feed_dict={
+									self.input_image: data,
+									self.keep_prob: 1.0, self.lamb: 0.004
+								}
+							)
+				
+				predict_result = predict_result[0]
+				
+				augment(predict_image)
+				
+				predict_image = binaryToImg(predict_image)
+				predict_image = Ige.fromarray(predict_image,'RGB')
+				predict_image.save('predict_image.jpg')
+				predict_image.show() 
 			
 			
 		print('Done prediction')
@@ -549,9 +643,12 @@ class DCIGN:
 def main():
 	basePath = "C:/Users/24400/Desktop"
 	dcign = DCIGN()
-	dcign.setup_network(32)
-	dcign.train(32,basePath)
-	#dcign.estimate(32,basePath)
+	#dcign.setup_encode_network(32)
+	#dcign.setup_decode_network(32)
+	#dcign.train(32,basePath)
+	#dcign.estimate_encode(32,basePath)
+	#dcign.estimate_decode(32,input)
+
 	
 
 main()

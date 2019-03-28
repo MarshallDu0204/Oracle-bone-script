@@ -294,14 +294,14 @@ class Unet:
 
 			#first deconvolution
 			
-			w_conv = self.weight_variable([4,4,256,128])
+			w_conv = self.weight_variable([3,3,256,128])
 			b_conv = self.bias_variable([128])
 
 			img_deconv = tf.nn.relu(self.conv2d(X,w_conv)+b_conv)
 
 			X = img_deconv
 
-			w_conv = self.weight_variable([4,4,128,128])
+			w_conv = self.weight_variable([3,3,128,128])
 			b_conv = self.bias_variable([128])
 
 			img_deconv = tf.nn.relu(self.conv2d(X,w_conv)+b_conv)
@@ -340,14 +340,14 @@ class Unet:
 
 			# second deconvolution
 
-			w_conv = self.weight_variable([4,4,128,64])
+			w_conv = self.weight_variable([3,3,128,64])
 			b_conv = self.bias_variable([64])
 
 			img_deconv = tf.nn.relu(self.conv2d(X,w_conv)+b_conv)
 
 			X = img_deconv
 
-			w_conv = self.weight_variable([4,4,64,64])
+			w_conv = self.weight_variable([3,3,64,64])
 			b_conv = self.bias_variable([64])
 
 			img_deconv = tf.nn.relu(self.conv2d(X,w_conv)+b_conv)
@@ -388,14 +388,14 @@ class Unet:
 
 			#final layer
 
-			w_conv = self.weight_variable([4,4,64,32])
+			w_conv = self.weight_variable([3,3,64,32])
 			b_conv = self.bias_variable([32])
 
 			img_deconv = tf.nn.relu(self.conv2d(X,w_conv)+b_conv)
 
 			X = img_deconv
 
-			w_conv = self.weight_variable([4,4,32,32])
+			w_conv = self.weight_variable([3,3,32,32])
 			b_conv = self.bias_variable([32])
 
 			img_deconv = tf.nn.relu(self.conv2d(X,w_conv)+b_conv)
