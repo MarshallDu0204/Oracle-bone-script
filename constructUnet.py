@@ -24,43 +24,19 @@ def augment():
 
 train_set_writer = tf.python_io.TFRecordWriter("C:/Users/24400/Desktop/train_set_Unet.tfrecords") 
 
-def binaryToImg(bin):
-	axis = []
-	for x in bin:
-		element = []
-		for y in x:
-			temp = []
-			if y == 1:
-				temp.append(0)
-				temp.append(0)
-				temp.append(0)
-			else:
-				temp.append(255)
-				temp.append(255)
-				temp.append(255)
-			temp = np.array(temp,dtype = 'uint8')
-			element.append(temp)
-		element = np.array(element)
-		axis.append(element)
 
-	axis = np.array(axis)
-	return axis
+def compressImg(img):
+	sample_image = np.asarray(a=img[:, :, 0], dtype=np.uint8)
+	return sample_image
 
-def convertToBinary(img):
-	axis = []
+def checkNum(img):
+	count = 0
 	for x in img:
-		element = []	
 		for y in x:
-			if y[0]<150: 
-				element.append(1)
-			else:
-				element.append(0)
-		element = np.array(element,dtype = 'uint8')
-		axis.append(element)
-	axis = np.array(axis)
-	return axis
-
-
+			if y==0:
+				count+=1
+	return count
+				
 def writeToSet2(image_path,label_path):
 	imgPath = os.listdir(image_path)
 
@@ -71,15 +47,17 @@ def writeToSet2(image_path,label_path):
 	for label in tempLabel:
 		tempPath = label_path+"/"+label
 		label_img = cv2.imdecode(np.fromfile(tempPath,dtype=np.uint8),-1)
+		label_img = compressImg(label_img)
 		label_img = cv2.resize(src = label_img,dsize=(96,96))
-		label_img = convertToBinary(label_img)
+		label_img[label_img <= 100] = 0
+		label_img[label_img > 100] = 1
 		train_label.append(label_img)
 
 	for img in imgPath:
 		tempImg = image_path+"/"+img
 		train_img = cv2.imdecode(np.fromfile(tempImg,dtype=np.uint8),-1)
+		train_img = compressImg(train_img)
 		train_img = cv2.resize(src = train_img,dsize=(96,96))
-		train_img = convertToBinary(train_img)
 		train.append(train_img)
 
 	num = 0
@@ -98,7 +76,6 @@ def writeToSet2(image_path,label_path):
 			num+=1
 	return num
 
-	
 path1 = "C:/Users/24400/Desktop/oracle-jpg"
 path2 = "C:/Users/24400/Desktop/jin-jpg"
 

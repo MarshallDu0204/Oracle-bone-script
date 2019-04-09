@@ -7,44 +7,11 @@ import Augmentor
 import cv2
 import random
 
-def binaryToImg(bin):
-	axis = []
-	for x in bin:
-		element = []
-		for y in x:
-			temp = []
-			if y == 1:
-				temp.append(0)
-				temp.append(0)
-				temp.append(0)
-			else:
-				temp.append(255)
-				temp.append(255)
-				temp.append(255)
-			temp = np.array(temp,dtype = 'uint8')
-			element.append(temp)
-		element = np.array(element)
-		axis.append(element)
-
-	axis = np.array(axis)
-	return axis
-
-def convertToBinary(img):
-	axis = []
-	for x in img:
-		element = []	
-		for y in x:
-			if y[0]<150:
-				element.append(1)
-			else:
-				element.append(0)
-		element = np.array(element,dtype = 'uint8')
-		axis.append(element)
-	axis = np.array(axis)
-	return axis
-
-
 train_set_writer = tf.python_io.TFRecordWriter("C:/Users/24400/Desktop/train_set_cnn.tfrecords")
+
+def compressImg(img):
+	sample_image = np.asarray(a=img[:, :, 0], dtype=np.uint8)
+	return sample_image
 
 def writeToSet():
 	judgeList = [0,1]
@@ -98,18 +65,24 @@ def writeToSet():
 		while i!=value:
 			image1 = imageList[i]
 			image1 = cv2.imdecode(np.fromfile(image1,dtype=np.uint8),-1)
+			image1 = compressImg(image1)
 			image1 = cv2.resize(src = image1,dsize=(96,96))
-			image1 = convertToBinary(image1)
+			image1[image1 <= 150] = 0
+			image1[image1 > 150] = 255
 
 			image2 = trueList[i]
 			image2 = cv2.imdecode(np.fromfile(image2,dtype=np.uint8),-1)
+			image2 = compressImg(image2)
 			image2 = cv2.resize(src = image2,dsize=(96,96))
-			image2 = convertToBinary(image2)
+			image2[image2 <= 150] = 0
+			image2[image2 > 150] = 255
 
 			image3 = falseList[i]
 			image3 = cv2.imdecode(np.fromfile(image3,dtype=np.uint8),-1)
+			image3 = compressImg(image3)
 			image3 = cv2.resize(src = image3,dsize=(96,96))
-			image3 = convertToBinary(image3)
+			image3[image3 <= 150] = 0
+			image3[image3 > 150] = 255
 
 			feature = {}
 			feature['img1'] = tf.train.Feature(bytes_list=tf.train.BytesList(value=[image1.tobytes()]))

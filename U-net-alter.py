@@ -3,6 +3,10 @@ import numpy as np
 import cv2
 from PIL import Image as Ige
 
+def writeInfo(text):
+	with open("info.txt","a") as f:
+		f.write(str(text)+"\n")
+
 def augment(img):
 	i=1
 	while i!=95:
@@ -16,29 +20,13 @@ def augment(img):
 			j+=1
 		i+=1
 
-
-def convertToBinary(img):
-	axis = []
-	for x in img:
-		element = []
-		for y in x:
-			if y[0]<150:
-				element.append(1)
-			else:
-				element.append(0)
-		element = np.array(element,dtype = 'uint8')
-		axis.append(element)
-	axis = np.array(axis)
-	return axis
-
-
 def binaryToImg(bin):
 	axis = []
 	for xAxis in bin:
 		element = []
 		for yAxis in xAxis:
 			temp = []
-			if yAxis == 1:
+			if yAxis == 0:
 				temp.append(0)
 				temp.append(0)
 				temp.append(0)
@@ -54,12 +42,14 @@ def binaryToImg(bin):
 	axis = np.array(axis)
 	return axis
 
-
+def compressImg(img):
+	sample_image = np.asarray(a=img[:, :, 0], dtype=np.uint8)
+	return sample_image
 
 def readData_single(path):
 	path = path+"/train_set_Unet.tfrecords"
 
-	filename_queue = tf.train.string_input_producer([path],num_epochs = 1,shuffle = True)
+	filename_queue = tf.train.string_input_producer([path],num_epochs = 20,shuffle = True)
 
 	reader = tf.TFRecordReader()
 
@@ -110,10 +100,9 @@ class Unet:
 		self.train_step = None
 
 
-
 	def weight_variable(self,shape):
 	    initial = tf.truncated_normal(shape,stddev=tf.sqrt(x = 2/(shape[0]*shape[1]*shape[2])))
-	    #initial = tf.truncated_normal(shape,stddev=0.015)
+	    #initial = tf.truncated_normal(shape,stddev=0.01)
 	    tf.add_to_collection(name = 'loss',value=tf.contrib.layers.l2_regularizer(self.lamb)(initial))   
 	    return tf.Variable(initial)
 
@@ -138,7 +127,7 @@ class Unet:
 	def merge_img(self,convo_layer,unsampling):
 		return tf.concat(values = [convo_layer,unsampling],axis = -1)
 
-	def setup_network(self,batch_size):
+	def setup_network(self,batch_size,mode):
 
 		self.input_image = tf.placeholder(dtype = tf.float32,shape = [batch_size,96,96,1])
 
@@ -175,6 +164,7 @@ class Unet:
 
 			X = img_pool
 
+			X = tf.nn.dropout(X,keep_prob = self.keep_prob)
 
 		#second convolution 48*48*32 --> 24*24*64
 
@@ -205,7 +195,7 @@ class Unet:
 
 			X = img_pool
 
-
+			X = tf.nn.dropout(X,keep_prob = self.keep_prob)
 
 		#third convolution 24*24*64 -->12*12*128 
 
@@ -274,20 +264,26 @@ class Unet:
 
 		with tf.name_scope('first_deconvolution'):
 
-			#transfer the matrix
-
-			w_conv = self.weight_variable_alter([24*24*128,1])
-			b_conv = self.bias_variable([24*24*128])
-
 			tempMatrix = self.unPooling[2]
 
-			tempMatrix = tf.reshape(tempMatrix,[batch_size,24*24*128])
+			#transfer the matrix
 
-			#tempMatrix = tf.matmul(tempMatrix,w_conv)+b_conv
+			if mode == 1:
 
-			tempMatrix = tf.nn.relu(tf.matmul(tempMatrix,w_conv)+b_conv)
+				w_conv = self.weight_variable_alter([24*24*128,1])
+				b_conv = self.bias_variable([24*24*128])
 
-			tempMatrix = tf.reshape(tempMatrix,[batch_size,24,24,128])
+				tempMatrix = tf.reshape(tempMatrix,[batch_size,24*24*128])
+
+				tempMatrix = tf.matmul(tempMatrix,w_conv)+b_conv
+
+
+				w_conv = self.weight_variable_alter([24*24*128,1])
+				b_conv = self.bias_variable([24*24*128])
+
+				tempMatrix = tf.matmul(tempMatrix,w_conv)+b_conv
+
+				tempMatrix = tf.reshape(tempMatrix,[batch_size,24,24,128])
 
 
 			X = self.merge_img(tempMatrix,X)
@@ -317,23 +313,32 @@ class Unet:
 
 			X = img_deconv
 
+			X = tf.nn.dropout(X,keep_prob = self.keep_prob)
+
 
 		with tf.name_scope('second_deconvolution'):
 
-			#transfer the matrix
-
-			w_conv = self.weight_variable_alter([48*48*64,1])
-			b_conv = self.bias_variable([48*48*64])
-
 			tempMatrix = self.unPooling[1]
 
-			tempMatrix = tf.reshape(tempMatrix,[batch_size,48*48*64])
+			#transfer the matrix
 
-			#tempMatrix = tf.matmul(tempMatrix,w_conv)+b_conv
+			if mode == 1:
 
-			tempMatrix = tf.nn.relu(tf.matmul(tempMatrix,w_conv)+b_conv)
+				w_conv = self.weight_variable_alter([48*48*64,1])
+				b_conv = self.bias_variable([48*48*64])
+				
 
-			tempMatrix = tf.reshape(tempMatrix,[batch_size,48,48,64])
+				tempMatrix = tf.reshape(tempMatrix,[batch_size,48*48*64])
+
+				tempMatrix = tf.matmul(tempMatrix,w_conv)+b_conv
+
+				
+				w_conv = self.weight_variable_alter([48*48*64,1])
+				b_conv = self.bias_variable([48*48*64])
+
+				tempMatrix = tf.matmul(tempMatrix,w_conv)+b_conv
+
+				tempMatrix = tf.reshape(tempMatrix,[batch_size,48,48,64])
 
 
 			X = self.merge_img(tempMatrix,X)
@@ -363,25 +368,31 @@ class Unet:
 
 			X = img_deconv
 
-			#X = tf.nn.dropout(X,keep_prob = self.keep_prob)
+			X = tf.nn.dropout(X,keep_prob = self.keep_prob)
 
 
 		with tf.name_scope('final_layer'):
 
-			#transfer the matrix
-
-			w_conv = self.weight_variable_alter([96*96*32,1])
-			b_conv = self.bias_variable([96*96*32])
-
 			tempMatrix = self.unPooling[0]
 
-			tempMatrix = tf.reshape(tempMatrix,[batch_size,96*96*32])
+			#transfer the matrix
 
-			#tempMatrix = tf.matmul(tempMatrix,w_conv)+b_conv
+			if mode == 1:
 
-			tempMatrix = tf.nn.relu(tf.matmul(tempMatrix,w_conv)+b_conv)
+				w_conv = self.weight_variable_alter([96*96*32,1])
+				b_conv = self.bias_variable([96*96*32])
 
-			tempMatrix = tf.reshape(tempMatrix,[batch_size,96,96,32])
+				
+				tempMatrix = tf.reshape(tempMatrix,[batch_size,96*96*32])
+
+				tempMatrix = tf.matmul(tempMatrix,w_conv)+b_conv
+
+				w_conv = self.weight_variable_alter([96*96*32,1])
+				b_conv = self.bias_variable([96*96*32])
+
+				tempMatrix = tf.matmul(tempMatrix,w_conv)+b_conv
+
+				tempMatrix = tf.reshape(tempMatrix,[batch_size,96,96,32])
 
 
 			X = self.merge_img(tempMatrix,X)
@@ -462,6 +473,7 @@ class Unet:
 
 			image_batch,label_batch = tf.train.shuffle_batch([image,label],batch_size = batch_size,num_threads = 4,capacity = 1012,min_after_dequeue = 1000)
 
+			label_batch = tf.reshape(label_batch, [batch_size, 96, 96])
 
 			sess.run(tf.global_variables_initializer())
 			
@@ -486,13 +498,13 @@ class Unet:
 
 
 					lo,acc,summary = sess.run([self.loss_mean,self.accurancy,merged_summary],feed_dict = {
-							self.input_image:example,self.input_label:label,self.keep_prob:0.5,self.lamb:0.004
+							self.input_image:example,self.input_label:label,self.keep_prob:1.0,self.lamb:0.004
 						})
 
 					summary_writer.add_summary(summary, epoch)
 
 					sess.run([self.train_step],feed_dict={
-							self.input_image: example, self.input_label: label, self.keep_prob: 1.0,
+							self.input_image: example, self.input_label: label, self.keep_prob: 0.6,
 							self.lamb: 0.004
 						})
 
@@ -521,8 +533,8 @@ class Unet:
 		imgPath = path+"/J17522.jpg"
 
 		img = cv2.imdecode(np.fromfile(imgPath,dtype=np.uint8),-1)
+		img = compressImg(img)
 		img = cv2.resize(src = img,dsize=(96,96))
-		img = convertToBinary(img)
 		newImg = []
 		i=0
 		while i!=batch_size:
@@ -547,8 +559,6 @@ class Unet:
 						)
 			
 			predict_image = predict_image[0]
-
-			augment(predict_image)
 			
 			predict_image = binaryToImg(predict_image)
 			predict_image = Ige.fromarray(predict_image,'RGB')
@@ -563,8 +573,8 @@ class Unet:
 def main():
 	basePath = "C:/Users/24400/Desktop"
 	unet = Unet()
-	unet.setup_network(32)
-	unet.train(32,basePath)
-	#unet.estimate(32,basePath)
+	unet.setup_network(64,1)
+	unet.train(64,basePath)
+	#unet.estimate(64,basePath)
 
 main()

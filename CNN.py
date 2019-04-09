@@ -2,27 +2,19 @@ import tensorflow as tf
 import numpy as np
 import cv2
 from PIL import Image as Ige
+import random
+import os
 
 
-def convertToBinary(img):
-	axis = []
-	for x in img:
-		element = []
-		for y in x:
-			if y[0]<150:
-				element.append(1)
-			else:
-				element.append(0)
-		element = np.array(element,dtype = 'uint8')
-		axis.append(element)
-	axis = np.array(axis)
-	return axis
+def compressImg(img):
+	sample_image = np.asarray(a=img[:, :, 0], dtype=np.uint8)
+	return sample_image
 
 
 def readData_single(path):
 	path = path+"/train_set_cnn.tfrecords"
 
-	filename_queue = tf.train.string_input_producer([path],num_epochs = 1,shuffle = True)
+	filename_queue = tf.train.string_input_producer([path],num_epochs = 20,shuffle = True)
 
 	reader = tf.TFRecordReader()
 
@@ -138,6 +130,8 @@ class CNN:
 
 			X = self.max_pooling(X)
 
+			X = tf.nn.dropout(X,keep_prob = self.keep_prob)
+
 
 		#96*48*32 --> 48*24*64
 
@@ -154,6 +148,8 @@ class CNN:
 
 			X = self.max_pooling(X)
 
+			X = tf.nn.dropout(X,keep_prob = self.keep_prob)
+
 		#48*24*64 --> 24*12*128
 
 		with tf.name_scope('third_convolution'):
@@ -169,16 +165,35 @@ class CNN:
 
 			X = self.max_pooling(X)
 
+			X = tf.nn.dropout(X,keep_prob = self.keep_prob)
+
+		#24*12*128 --> 12*6*256
+
+		with tf.name_scope('fourth_convolution'):
+
+			#-------- convolution -------
+
+			w_conv = self.weight_variable([3,3,128,256])
+			b_conv = self.bias_variable([256])
+
+			X = tf.nn.relu(self.conv2d(X,w_conv)+b_conv)
+
+			#-------maxpooling----------
+
+			X = self.max_pooling(X)
+
+			X = tf.nn.dropout(X,keep_prob = self.keep_prob)
+
 			
-		#hidden layer 1  24*12*128 --> 1024
+		#hidden layer 1  12*6*256 --> 1024
 
 		with tf.name_scope('hidden_layer_1'):
 
 			#-------reshape---------
 
-			X = tf.reshape(X,[batch_size,24*12*128])
+			X = tf.reshape(X,[batch_size,12*6*256])
 
-			w_conv = self.weight_variable_alter([24*12*128,1024])
+			w_conv = self.weight_variable_alter([12*6*256,1024])
 			b_conv = self.bias_variable([1024])
 
 			X = tf.nn.relu(tf.matmul(X,w_conv)+b_conv)
@@ -201,8 +216,8 @@ class CNN:
 
 		with tf.name_scope('softmax'):
 
-			self.loss = tf.reduce_mean(-tf.reduce_sum(self.input_label*tf.log(self.prediction),reduction_indices=[1]))
-
+			#self.loss = tf.reduce_mean(-tf.reduce_sum(self.input_label*tf.log(self.prediction),reduction_indices=[1]))
+			self.loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=self.prediction, labels=self.input_label))
 
 	    #accurancy
 		with tf.name_scope('accurancy'):
@@ -268,13 +283,13 @@ class CNN:
 
 
 					lo,acc,summary = sess.run([self.loss,self.accurancy,merged_summary],feed_dict = {
-							self.input_image1:example1,self.input_image2:example2,self.input_label:label,self.keep_prob:0.5,self.lamb:0.004
+							self.input_image1:example1,self.input_image2:example2,self.input_label:label,self.keep_prob:1.0,self.lamb:0.004
 						})
 
 					summary_writer.add_summary(summary, epoch)
 
 					sess.run([self.train_step],feed_dict={
-							self.input_image1: example1,self.input_image2:example2,self.input_label:label,self.keep_prob: 1.0,
+							self.input_image1: example1,self.input_image2:example2,self.input_label:label,self.keep_prob: 0.75,
 							self.lamb: 0.004
 						})
 
@@ -304,8 +319,8 @@ class CNN:
 		imgPath1 = path+"/J17522.jpg"
 
 		img1 = cv2.imdecode(np.fromfile(imgPath1,dtype=np.uint8),-1)
+		img1 = compressImg(img1)
 		img1 = cv2.resize(src = img1,dsize=(96,96))
-		img1 = convertToBinary(img1)
 
 		data1 = img1
 			
@@ -322,8 +337,8 @@ class CNN:
 		imgPath2 = path+"/J17538.jpg"
 
 		img2 = cv2.imdecode(np.fromfile(imgPath2,dtype=np.uint8),-1)
+		img2 = compressImg(img2)
 		img2 = cv2.resize(src = img2,dsize=(96,96))
-		img2 = convertToBinary(img2)
 
 		data2 = img2
 
@@ -359,12 +374,258 @@ class CNN:
 			print(predict_result) 
 		print('Done prediction')
 
+	def deepEstimate(self,path,batch_size):
+
+		estimateMatrics = []
+
+		ckpt_path = path+"/ckpt-cnn/model.ckpt"
+
+		all_parameters_saver = tf.train.Saver()
+
+		path = path
+
+		oraclePath = path+"/oracle-jpg"
+
+		oracleList = os.listdir(oraclePath)
+
+		jinPath = path+"/jin-jpg"
+
+		jinList = os.listdir(jinPath)
+
+		with tf.Session() as sess:
+
+			sess.run(tf.global_variables_initializer())
+			sess.run(tf.local_variables_initializer())
+
+			all_parameters_saver.restore(sess=sess, save_path=ckpt_path)
+
+			i=0
+
+			while i!=20:
+
+				elementList =os.listdir(oraclePath+"/"+oracleList[i])
+
+				trueList = os.listdir(jinPath+"/"+jinList[i])
+
+				num = -1
+
+				if i<210:
+
+					num = random.randint(0,209)
+
+				else:
+
+					num = random.randint(210,419)
+
+				falseList = os.listdir(jinPath+"/"+jinList[num])
+
+				trueNum = len(trueList)
+
+				falseNum = len(falseList)
+
+
+				for element in elementList:
+
+					tempTrue = random.randint(0,trueNum-1)
+
+					tempFalse = random.randint(0,falseNum-1)
+
+					trueElement = jinPath+"/"+jinList[i]+"/"+trueList[tempTrue]
+
+					falseElement = jinPath+"/"+jinList[num]+"/"+falseList[tempFalse]
+
+					originElement = oraclePath+"/"+oracleList[i]+"/"+element
+
+				
+					originImg = cv2.imdecode(np.fromfile(originElement,dtype=np.uint8),-1)
+					originImg = compressImg(originImg)
+					originImg = cv2.resize(src = originImg,dsize=(96,96))
+
+					trueImg = cv2.imdecode(np.fromfile(trueElement,dtype=np.uint8),-1)
+					trueImg = compressImg(trueImg)
+					trueImg = cv2.resize(src = trueImg,dsize=(96,96))
+
+					falseImg = cv2.imdecode(np.fromfile(falseElement,dtype=np.uint8),-1)
+					falseImg = compressImg(falseImg)
+					falseImg = cv2.resize(src = falseImg,dsize=(96,96))
+
+					origin = []
+					true = []
+					false = []
+
+					i1=0
+					while i1!=batch_size:
+						origin.append(originImg)
+						i1+=1
+
+					data1 = np.reshape(a=origin, newshape=(batch_size,96,96,1))
+
+					i1=0
+					while i1!=batch_size:
+						true.append(trueImg)
+						i1+=1
+
+					data2 = np.reshape(a=true, newshape=(batch_size,96,96,1))
+
+					i1=0
+					while i1!=batch_size:
+						false.append(falseImg)
+						i1+=1
+
+					data3 = np.reshape(a=true, newshape=(batch_size,96,96,1))
+
+					predict_result = sess.run(
+								tf.argmax(input=self.prediction, axis=1), 
+								feed_dict={
+										self.input_image1: data1,self.input_image2:data2,
+										self.keep_prob: 1.0, self.lamb: 0.004
+									}
+								)
+
+					predict_result = predict_result[0]
+
+					if predict_result == 0:
+
+						estimateMatrics.append([1,0])#fn
+
+					else:
+
+						estimateMatrics.append([1,1])#tp 
+
+					predict_result = sess.run(
+								tf.argmax(input=self.prediction, axis=1), 
+								feed_dict={
+										self.input_image1: data1,self.input_image2:data3,
+										self.keep_prob: 1.0, self.lamb: 0.004
+									}
+								)
+
+					predict_result = predict_result[0]
+					
+					if predict_result == 0:
+
+						estimateMatrics.append([0,0])#tn
+
+					else:
+
+						estimateMatrics.append([0,1])#fp 
+
+				print(i)	
+				i+=1
+
+			print(estimateMatrics)
+			tpNum = 0
+			fpNum = 0
+			tnNum  =0
+			fnNum = 0
+
+			for elemnt in estimateMatrics:
+
+				if element == [1,1]:
+					tpNum+=1
+
+				if element == [1,0]:
+					fnNum+=1
+
+				if element == [0,1]:
+					fpNum+=1
+
+				if element == [0,0]:
+					tnNum+=1
+
+			precision = tpNum/(tpNum+fpNum)
+			recall = tpNum/(tpNum+fnNum)
+			print("precision",precision,"recall",recall)
+			print("Done")
+
+	def deep2estimate(self,basePath,batch_size,index1,index2):
+
+		oraclePath = "C:/Users/24400/Desktop/oracle-jpg"
+
+		jinPath = "C:/Users/24400/Desktop/jin-jpg"
+
+		oracleList = os.listdir(oraclePath)
+
+		jinList = os.listdir(jinPath)
+
+		oraclePath = oraclePath+"/"+oracleList[index1]
+
+		jinPath = jinPath+"/"+jinList[index2]
+
+		oracleList = os.listdir(oraclePath)
+
+		jinList = os.listdir(jinPath)
+
+		ckpt_path = basePath+"/ckpt-cnn/model.ckpt"
+
+		all_parameters_saver = tf.train.Saver()
+
+		totalNum = 0
+		trueNum = 0
+		falseNum = 0
+
+		with tf.Session() as sess:  
+			sess.run(tf.global_variables_initializer())
+			sess.run(tf.local_variables_initializer())
+			all_parameters_saver.restore(sess=sess, save_path=ckpt_path)
+
+			for element in oracleList:
+
+				elementPath = oraclePath+"/"+element
+
+				for char in jinList:
+
+					targetPath = jinPath+"/"+char
+
+					print(elementPath,targetPath)
+
+					originImg = cv2.imdecode(np.fromfile(elementPath,dtype=np.uint8),-1)
+					originImg = compressImg(originImg)
+					originImg = cv2.resize(src = originImg,dsize=(96,96))
+
+					targetImg = cv2.imdecode(np.fromfile(targetPath,dtype=np.uint8),-1)
+					targetImg = compressImg(targetImg)
+					targetImg = cv2.resize(src = targetImg,dsize=(96,96))
+
+					origin = []
+					target = []
+
+					i=0
+					
+					while i!=batch_size:
+						origin.append(originImg)
+						target.append(targetImg)
+						i+=1
+
+					data1 = np.reshape(a=origin, newshape=(batch_size,96,96,1))
+					data2 = np.reshape(a=target, newshape=(batch_size,96,96,1))
+
+
+					predict_result = sess.run(
+							tf.argmax(input=self.prediction, axis=1), 
+											feed_dict={
+												self.input_image1:data1,self.input_image2:data2,
+												self.keep_prob: 1.0, self.lamb: 0.004
+											}
+										)
+
+					predict_result = predict_result[0]
+
+					totalNum+=1
+
+			
+							
+					print(predict_result) 
+		print('Done prediction')
+		
 
 def main():
 	basePath = "C:/Users/24400/Desktop"
 	cnn = CNN()
 	cnn.setup_network(64)
-	cnn.train(64,basePath)
+	#cnn.train(64,basePath)
 	#cnn.estimate(64,basePath)
+	#cnn.deepEstimate(basePath,64)
+	cnn.deep2estimate(basePath,64,3,10)
 
 main()

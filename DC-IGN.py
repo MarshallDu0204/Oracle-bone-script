@@ -16,20 +16,9 @@ def augment(img):
 			j+=1
 		i+=1
 
-
-def convertToBinary(img):
-	axis = []
-	for x in img:
-		element = []
-		for y in x:
-			if y[0]<150:
-				element.append(1)
-			else:
-				element.append(0)
-		element = np.array(element,dtype = 'uint8')
-		axis.append(element)
-	axis = np.array(axis)
-	return axis
+def compressImg(img):
+	sample_image = np.asarray(a=img[:, :, 0], dtype=np.uint8)
+	return sample_image
 
 
 def binaryToImg(bin):
@@ -38,7 +27,7 @@ def binaryToImg(bin):
 		element = []
 		for yAxis in xAxis:
 			temp = []
-			if yAxis == 1:
+			if yAxis == 0:
 				temp.append(0)
 				temp.append(0)
 				temp.append(0)
@@ -577,8 +566,8 @@ class DCIGN:
 		imgPath = path+"/J17522.jpg"
 
 		img = cv2.imdecode(np.fromfile(imgPath,dtype=np.uint8),-1)
+		img = compressImg(img)
 		img = cv2.resize(src = img,dsize=(96,96))
-		img = convertToBinary(img)
 		newImg = []
 		i=0
 		while i!=batch_size:

@@ -21,41 +21,7 @@ def augment(img):
 		i+=1
 
 
-def convertToBinary(img):
-	axis = []
-	for x in img:
-		element = []
-		for y in x:
-			if y[0]<150:
-				element.append(1)
-			else:
-				element.append(0)
-		element = np.array(element,dtype = 'uint8')
-		axis.append(element)
-	axis = np.array(axis)
-	return axis
-
-
-def binaryToImg(bin):
-	axis = []
-	for xAxis in bin:
-		element = []
-		for yAxis in xAxis:
-			temp = []
-			if yAxis == 1:
-				temp.append(0)
-				temp.append(0)
-				temp.append(0)
-			else:
-				temp.append(255)
-				temp.append(255)
-				temp.append(255)
-			temp = np.array(temp,dtype = 'uint8')
-			element.append(temp)
-		element = np.array(element)
-		axis.append(element)
-
-	axis = np.array(axis)
-	return axis
-
+def compressImg(img):
+	sample_image = np.asarray(a=img[:, :, 0], dtype=np.uint8)
+	return sample_image
 
