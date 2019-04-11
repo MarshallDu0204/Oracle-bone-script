@@ -1,2 +1,2 @@
-model_checkpoint_path: "/home/duwei.0204/ckpt-unet/model.ckpt"
-all_model_checkpoint_paths: "/home/duwei.0204/ckpt-unet/model.ckpt"
+model_checkpoint_path: "/root/ckpt-unet/model.ckpt"
+all_model_checkpoint_paths: "/root/ckpt-unet/model.ckpt"

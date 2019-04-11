@@ -5,6 +5,10 @@ from PIL import Image as Ige
 import random
 import os
 
+def writeInfo(text):
+	with open("info1.txt","a") as f:
+		f.write(str(text)+"\n")
+
 
 def compressImg(img):
 	sample_image = np.asarray(a=img[:, :, 0], dtype=np.uint8)
@@ -30,9 +34,13 @@ def readData_single(path):
 
 	image1 = tf.reshape(image1,[96,96,1])
 
+	image1 = tf.cast(image1, tf.float32) * (1. / 255) - 0.5
+
 	image2 = tf.decode_raw(features['img2'],tf.uint8)
 
-	image2 = tf.reshape(image2,[96,96,1])
+	image2 = tf.cast(image2, tf.float32) * (1. / 255) - 0.5
+
+	image2 = tf.cast(image2, tf.float32)*()
 
 	label = tf.cast(features['label'], tf.int32)
 
@@ -81,7 +89,7 @@ class CNN:
 
 
 	def weight_variable_alter(self,shape):
-	    initial = tf.truncated_normal(shape,stddev=0.015)
+	    initial = tf.truncated_normal(shape,stddev=0.02)
 	    tf.add_to_collection(name = 'loss',value=tf.contrib.layers.l2_regularizer(self.lamb)(initial))   
 	    return tf.Variable(initial)
 
@@ -216,8 +224,8 @@ class CNN:
 
 		with tf.name_scope('softmax'):
 
-			#self.loss = tf.reduce_mean(-tf.reduce_sum(self.input_label*tf.log(self.prediction),reduction_indices=[1]))
-			self.loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=self.prediction, labels=self.input_label))
+			self.loss = tf.reduce_mean(-tf.reduce_sum(self.input_label*tf.log(self.prediction),reduction_indices=[1]))
+			#self.loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=self.prediction, labels=self.input_label))
 
 	    #accurancy
 		with tf.name_scope('accurancy'):
@@ -296,6 +304,7 @@ class CNN:
 					epoch+=1
 
 					if epoch%10 == 0:
+						writeInfo(str(epoch)+" "+str(lo)+" "+str(acc))
 						print('num %d, loss: %.6f and accuracy: %.6f' % (epoch, lo, acc))
 
 
@@ -321,6 +330,7 @@ class CNN:
 		img1 = cv2.imdecode(np.fromfile(imgPath1,dtype=np.uint8),-1)
 		img1 = compressImg(img1)
 		img1 = cv2.resize(src = img1,dsize=(96,96))
+		img1 = img1/255 - 0.5
 
 		data1 = img1
 			
@@ -339,6 +349,7 @@ class CNN:
 		img2 = cv2.imdecode(np.fromfile(imgPath2,dtype=np.uint8),-1)
 		img2 = compressImg(img2)
 		img2 = cv2.resize(src = img2,dsize=(96,96))
+		img2 = img2/255 - 0.5
 
 		data2 = img2
 
@@ -374,171 +385,7 @@ class CNN:
 			print(predict_result) 
 		print('Done prediction')
 
-	def deepEstimate(self,path,batch_size):
-
-		estimateMatrics = []
-
-		ckpt_path = path+"/ckpt-cnn/model.ckpt"
-
-		all_parameters_saver = tf.train.Saver()
-
-		path = path
-
-		oraclePath = path+"/oracle-jpg"
-
-		oracleList = os.listdir(oraclePath)
-
-		jinPath = path+"/jin-jpg"
-
-		jinList = os.listdir(jinPath)
-
-		with tf.Session() as sess:
-
-			sess.run(tf.global_variables_initializer())
-			sess.run(tf.local_variables_initializer())
-
-			all_parameters_saver.restore(sess=sess, save_path=ckpt_path)
-
-			i=0
-
-			while i!=20:
-
-				elementList =os.listdir(oraclePath+"/"+oracleList[i])
-
-				trueList = os.listdir(jinPath+"/"+jinList[i])
-
-				num = -1
-
-				if i<210:
-
-					num = random.randint(0,209)
-
-				else:
-
-					num = random.randint(210,419)
-
-				falseList = os.listdir(jinPath+"/"+jinList[num])
-
-				trueNum = len(trueList)
-
-				falseNum = len(falseList)
-
-
-				for element in elementList:
-
-					tempTrue = random.randint(0,trueNum-1)
-
-					tempFalse = random.randint(0,falseNum-1)
-
-					trueElement = jinPath+"/"+jinList[i]+"/"+trueList[tempTrue]
-
-					falseElement = jinPath+"/"+jinList[num]+"/"+falseList[tempFalse]
-
-					originElement = oraclePath+"/"+oracleList[i]+"/"+element
-
-				
-					originImg = cv2.imdecode(np.fromfile(originElement,dtype=np.uint8),-1)
-					originImg = compressImg(originImg)
-					originImg = cv2.resize(src = originImg,dsize=(96,96))
-
-					trueImg = cv2.imdecode(np.fromfile(trueElement,dtype=np.uint8),-1)
-					trueImg = compressImg(trueImg)
-					trueImg = cv2.resize(src = trueImg,dsize=(96,96))
-
-					falseImg = cv2.imdecode(np.fromfile(falseElement,dtype=np.uint8),-1)
-					falseImg = compressImg(falseImg)
-					falseImg = cv2.resize(src = falseImg,dsize=(96,96))
-
-					origin = []
-					true = []
-					false = []
-
-					i1=0
-					while i1!=batch_size:
-						origin.append(originImg)
-						i1+=1
-
-					data1 = np.reshape(a=origin, newshape=(batch_size,96,96,1))
-
-					i1=0
-					while i1!=batch_size:
-						true.append(trueImg)
-						i1+=1
-
-					data2 = np.reshape(a=true, newshape=(batch_size,96,96,1))
-
-					i1=0
-					while i1!=batch_size:
-						false.append(falseImg)
-						i1+=1
-
-					data3 = np.reshape(a=true, newshape=(batch_size,96,96,1))
-
-					predict_result = sess.run(
-								tf.argmax(input=self.prediction, axis=1), 
-								feed_dict={
-										self.input_image1: data1,self.input_image2:data2,
-										self.keep_prob: 1.0, self.lamb: 0.004
-									}
-								)
-
-					predict_result = predict_result[0]
-
-					if predict_result == 0:
-
-						estimateMatrics.append([1,0])#fn
-
-					else:
-
-						estimateMatrics.append([1,1])#tp 
-
-					predict_result = sess.run(
-								tf.argmax(input=self.prediction, axis=1), 
-								feed_dict={
-										self.input_image1: data1,self.input_image2:data3,
-										self.keep_prob: 1.0, self.lamb: 0.004
-									}
-								)
-
-					predict_result = predict_result[0]
-					
-					if predict_result == 0:
-
-						estimateMatrics.append([0,0])#tn
-
-					else:
-
-						estimateMatrics.append([0,1])#fp 
-
-				print(i)	
-				i+=1
-
-			print(estimateMatrics)
-			tpNum = 0
-			fpNum = 0
-			tnNum  =0
-			fnNum = 0
-
-			for elemnt in estimateMatrics:
-
-				if element == [1,1]:
-					tpNum+=1
-
-				if element == [1,0]:
-					fnNum+=1
-
-				if element == [0,1]:
-					fpNum+=1
-
-				if element == [0,0]:
-					tnNum+=1
-
-			precision = tpNum/(tpNum+fpNum)
-			recall = tpNum/(tpNum+fnNum)
-			print("precision",precision,"recall",recall)
-			print("Done")
-
-	def deep2estimate(self,basePath,batch_size,index1,index2):
+	def deepEstimate(self,basePath,batch_size,index1,index2):
 
 		oraclePath = "C:/Users/24400/Desktop/oracle-jpg"
 
@@ -582,10 +429,13 @@ class CNN:
 					originImg = cv2.imdecode(np.fromfile(elementPath,dtype=np.uint8),-1)
 					originImg = compressImg(originImg)
 					originImg = cv2.resize(src = originImg,dsize=(96,96))
+					originImg = originImg/255 - 0.5
 
 					targetImg = cv2.imdecode(np.fromfile(targetPath,dtype=np.uint8),-1)
 					targetImg = compressImg(targetImg)
 					targetImg = cv2.resize(src = targetImg,dsize=(96,96))
+					image1 = tf.cast(image1, tf.float32) * (1. / 255) - 0.5
+					originImg = originImg/255 - 0.5
 
 					origin = []
 					target = []
@@ -623,9 +473,8 @@ def main():
 	basePath = "C:/Users/24400/Desktop"
 	cnn = CNN()
 	cnn.setup_network(64)
-	#cnn.train(64,basePath)
+	cnn.train(64,basePath)
 	#cnn.estimate(64,basePath)
-	#cnn.deepEstimate(basePath,64)
-	cnn.deep2estimate(basePath,64,3,10)
+	#cnn.deepEstimate(basePath,64,3,10)
 
 main()

@@ -111,7 +111,7 @@ class Unet:
 	    return tf.Variable(initial_value = initial)
 
 	def weight_variable_alter(self,shape):
-	    initial = tf.truncated_normal(shape,stddev=0.015)
+	    initial = tf.truncated_normal(shape,stddev=0.45)
 	    tf.add_to_collection(name = 'loss',value=tf.contrib.layers.l2_regularizer(self.lamb)(initial))   
 	    return tf.Variable(initial)
 
@@ -275,13 +275,13 @@ class Unet:
 
 				tempMatrix = tf.reshape(tempMatrix,[batch_size,24*24*128])
 
-				tempMatrix = tf.matmul(tempMatrix,w_conv)+b_conv
+				tempMatrix = tf.nn.relu(tf.matmul(tempMatrix,w_conv)+b_conv)
 
 
 				w_conv = self.weight_variable_alter([24*24*128,1])
 				b_conv = self.bias_variable([24*24*128])
 
-				tempMatrix = tf.matmul(tempMatrix,w_conv)+b_conv
+				tempMatrix = tf.nn.relu(tf.matmul(tempMatrix,w_conv)+b_conv)
 
 				tempMatrix = tf.reshape(tempMatrix,[batch_size,24,24,128])
 
@@ -330,13 +330,13 @@ class Unet:
 
 				tempMatrix = tf.reshape(tempMatrix,[batch_size,48*48*64])
 
-				tempMatrix = tf.matmul(tempMatrix,w_conv)+b_conv
+				tempMatrix = tf.nn.relu(tf.matmul(tempMatrix,w_conv)+b_conv)
 
 				
 				w_conv = self.weight_variable_alter([48*48*64,1])
 				b_conv = self.bias_variable([48*48*64])
 
-				tempMatrix = tf.matmul(tempMatrix,w_conv)+b_conv
+				tempMatrix = tf.nn.relu(tf.matmul(tempMatrix,w_conv)+b_conv)
 
 				tempMatrix = tf.reshape(tempMatrix,[batch_size,48,48,64])
 
@@ -385,12 +385,12 @@ class Unet:
 				
 				tempMatrix = tf.reshape(tempMatrix,[batch_size,96*96*32])
 
-				tempMatrix = tf.matmul(tempMatrix,w_conv)+b_conv
+				tempMatrix = tf.nn.relu(tf.matmul(tempMatrix,w_conv)+b_conv)
 
 				w_conv = self.weight_variable_alter([96*96*32,1])
 				b_conv = self.bias_variable([96*96*32])
 
-				tempMatrix = tf.matmul(tempMatrix,w_conv)+b_conv
+				tempMatrix = tf.nn.relu(tf.matmul(tempMatrix,w_conv)+b_conv)
 
 				tempMatrix = tf.reshape(tempMatrix,[batch_size,96,96,32])
 
@@ -512,7 +512,11 @@ class Unet:
 
 
 					if epoch%10 == 0:
+						writeInfo(str(epoch)+" "+str(lo)+" "+str(acc))
 						print('num %d, loss: %.6f and accuracy: %.6f' % (epoch, lo, acc))
+
+					if epoch% 300 == 0:
+						all_parameters_saver.save(sess = sess,save_path = ckpt_path)
 
 
 			except tf.errors.OutOfRangeError:
@@ -530,7 +534,7 @@ class Unet:
 
 
 	def estimate(self,batch_size,path):
-		imgPath = path+"/J17522.jpg"
+		imgPath = path+"/J17538.jpg"
 
 		img = cv2.imdecode(np.fromfile(imgPath,dtype=np.uint8),-1)
 		img = compressImg(img)
@@ -574,7 +578,7 @@ def main():
 	basePath = "C:/Users/24400/Desktop"
 	unet = Unet()
 	unet.setup_network(64,1)
-	unet.train(64,basePath)
-	#unet.estimate(64,basePath)
+	#unet.train(64,basePath)
+	unet.estimate(64,basePath)
 
 main()
