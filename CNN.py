@@ -40,7 +40,7 @@ def readData_single(path):
 
 	image2 = tf.cast(image2, tf.float32) * (1. / 255) - 0.5
 
-	image2 = tf.cast(image2, tf.float32)*()
+	image2 = tf.reshape(image2,[96,96,1])
 
 	label = tf.cast(features['label'], tf.int32)
 
@@ -307,6 +307,8 @@ class CNN:
 						writeInfo(str(epoch)+" "+str(lo)+" "+str(acc))
 						print('num %d, loss: %.6f and accuracy: %.6f' % (epoch, lo, acc))
 
+					if epoch%300 == 0:
+						all_parameters_saver.save(sess = sess,save_path = ckpt_path)
 
 			except tf.errors.OutOfRangeError:
 
