@@ -534,7 +534,7 @@ class Unet:
 
 
 	def estimate(self,batch_size,path):
-		imgPath = path+"/J17538.jpg"
+		imgPath = path+"/J17522.jpg"
 
 		img = cv2.imdecode(np.fromfile(imgPath,dtype=np.uint8),-1)
 		img = compressImg(img)
