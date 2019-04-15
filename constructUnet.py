@@ -2,16 +2,14 @@ import os,shutil,stat
 import numpy as np
 import tensorflow as tf
 from PIL import Image
-import pandas as pd
-import Augmentor
 import cv2
 import random
 
 def augment():
 	
 	p = Augmentor.Pipeline(
-		source_directory="C:/Users/24400/Desktop/temp",
-		output_directory="C:/Users/24400/Desktop/label"
+		source_directory="/root/temp",
+		output_directory="/root/label"
 	)
 	p.rotate(probability=0.5, max_left_rotation=2, max_right_rotation=2)
 	p.zoom(probability=0.5, min_factor=1.1, max_factor=1.2)
@@ -22,7 +20,7 @@ def augment():
 	p.flip_random(probability=0.2)
 	p.sample(n=1000)
 
-train_set_writer = tf.python_io.TFRecordWriter("C:/Users/24400/Desktop/train_set_Unet.tfrecords") 
+train_set_writer = tf.python_io.TFRecordWriter("/root/train_set_Unet.tfrecords") 
 
 
 def compressImg(img):
@@ -49,8 +47,8 @@ def writeToSet2(image_path,label_path):
 		label_img = cv2.imdecode(np.fromfile(tempPath,dtype=np.uint8),-1)
 		label_img = compressImg(label_img)
 		label_img = cv2.resize(src = label_img,dsize=(96,96))
-		label_img[label_img <= 100] = 0
-		label_img[label_img > 100] = 1
+		label_img[label_img <= 150] = 0
+		label_img[label_img > 150] = 1
 		train_label.append(label_img)
 
 	for img in imgPath:
@@ -58,13 +56,15 @@ def writeToSet2(image_path,label_path):
 		train_img = cv2.imdecode(np.fromfile(tempImg,dtype=np.uint8),-1)
 		train_img = compressImg(train_img)
 		train_img = cv2.resize(src = train_img,dsize=(96,96))
+		train_img[train_img <= 150] = 0
+		train_img[train_img > 150] = 1
 		train.append(train_img)
 
 	num = 0
 	for img in train:
 		newLabel = []
-		if len(train_label)>3:
-			newLabel = random.sample(train_label,3)
+		if len(train_label)>5:
+			newLabel = random.sample(train_label,5)
 		else:
 			newLabel = train_label
 		for label in newLabel:
@@ -76,8 +76,8 @@ def writeToSet2(image_path,label_path):
 			num+=1
 	return num
 
-path1 = "C:/Users/24400/Desktop/oracle-jpg"
-path2 = "C:/Users/24400/Desktop/jin-jpg"
+path1 = "/root/oracle-jpg"
+path2 = "/root/jin-jpg"
 
 chars = os.listdir(path1)
  

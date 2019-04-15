@@ -34,11 +34,7 @@ def readData_single(path):
 
 	image1 = tf.reshape(image1,[96,96,1])
 
-	image1 = tf.cast(image1, tf.float32) * (1. / 255) - 0.5
-
 	image2 = tf.decode_raw(features['img2'],tf.uint8)
-
-	image2 = tf.cast(image2, tf.float32) * (1. / 255) - 0.5
 
 	image2 = tf.reshape(image2,[96,96,1])
 
@@ -89,13 +85,13 @@ class CNN:
 
 
 	def weight_variable_alter(self,shape):
-	    initial = tf.truncated_normal(shape,stddev=0.02)
+	    initial = tf.truncated_normal(shape,stddev=0.1)
 	    tf.add_to_collection(name = 'loss',value=tf.contrib.layers.l2_regularizer(self.lamb)(initial))   
 	    return tf.Variable(initial)
 
 
 	def bias_variable(self,shape):
-	    initial = tf.random_normal(shape=shape,dtype = tf.float32)
+	    initial = tf.constant(0.1,shape=shape)
 	    return tf.Variable(initial_value = initial)
 
 
@@ -138,8 +134,6 @@ class CNN:
 
 			X = self.max_pooling(X)
 
-			X = tf.nn.dropout(X,keep_prob = self.keep_prob)
-
 
 		#96*48*32 --> 48*24*64
 
@@ -156,8 +150,6 @@ class CNN:
 
 			X = self.max_pooling(X)
 
-			X = tf.nn.dropout(X,keep_prob = self.keep_prob)
-
 		#48*24*64 --> 24*12*128
 
 		with tf.name_scope('third_convolution'):
@@ -173,8 +165,6 @@ class CNN:
 
 			X = self.max_pooling(X)
 
-			X = tf.nn.dropout(X,keep_prob = self.keep_prob)
-
 		#24*12*128 --> 12*6*256
 
 		with tf.name_scope('fourth_convolution'):
@@ -189,8 +179,6 @@ class CNN:
 			#-------maxpooling----------
 
 			X = self.max_pooling(X)
-
-			X = tf.nn.dropout(X,keep_prob = self.keep_prob)
 
 			
 		#hidden layer 1  12*6*256 --> 1024
@@ -215,7 +203,7 @@ class CNN:
 			w_conv = self.weight_variable_alter([1024,2])
 			b_conv = self.bias_variable([2])
 
-			X = tf.nn.softmax(tf.matmul(X,w_conv)+b_conv)
+			X = tf.matmul(X,w_conv)+b_conv
 
 			self.prediction = X
 
@@ -224,8 +212,7 @@ class CNN:
 
 		with tf.name_scope('softmax'):
 
-			self.loss = tf.reduce_mean(-tf.reduce_sum(self.input_label*tf.log(self.prediction),reduction_indices=[1]))
-			#self.loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=self.prediction, labels=self.input_label))
+			self.loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=self.prediction, labels=self.input_label))
 
 	    #accurancy
 		with tf.name_scope('accurancy'):
@@ -297,7 +284,7 @@ class CNN:
 					summary_writer.add_summary(summary, epoch)
 
 					sess.run([self.train_step],feed_dict={
-							self.input_image1: example1,self.input_image2:example2,self.input_label:label,self.keep_prob: 0.75,
+							self.input_image1: example1,self.input_image2:example2,self.input_label:label,self.keep_prob: 0.5,
 							self.lamb: 0.004
 						})
 
@@ -332,7 +319,6 @@ class CNN:
 		img1 = cv2.imdecode(np.fromfile(imgPath1,dtype=np.uint8),-1)
 		img1 = compressImg(img1)
 		img1 = cv2.resize(src = img1,dsize=(96,96))
-		img1 = img1/255 - 0.5
 
 		data1 = img1
 			
@@ -351,7 +337,6 @@ class CNN:
 		img2 = cv2.imdecode(np.fromfile(imgPath2,dtype=np.uint8),-1)
 		img2 = compressImg(img2)
 		img2 = cv2.resize(src = img2,dsize=(96,96))
-		img2 = img2/255 - 0.5
 
 		data2 = img2
 
@@ -389,9 +374,9 @@ class CNN:
 
 	def deepEstimate(self,basePath,batch_size,index1,index2):
 
-		oraclePath = "C:/Users/24400/Desktop/oracle-jpg"
+		oraclePath = basePath+"/oracle-jpg"
 
-		jinPath = "C:/Users/24400/Desktop/jin-jpg"
+		jinPath = basePath+"/jin-jpg"
 
 		oracleList = os.listdir(oraclePath)
 
@@ -431,13 +416,10 @@ class CNN:
 					originImg = cv2.imdecode(np.fromfile(elementPath,dtype=np.uint8),-1)
 					originImg = compressImg(originImg)
 					originImg = cv2.resize(src = originImg,dsize=(96,96))
-					originImg = originImg/255 - 0.5
 
 					targetImg = cv2.imdecode(np.fromfile(targetPath,dtype=np.uint8),-1)
 					targetImg = compressImg(targetImg)
 					targetImg = cv2.resize(src = targetImg,dsize=(96,96))
-					image1 = tf.cast(image1, tf.float32) * (1. / 255) - 0.5
-					originImg = originImg/255 - 0.5
 
 					origin = []
 					target = []
@@ -472,7 +454,7 @@ class CNN:
 		
 
 def main():
-	basePath = "C:/Users/24400/Desktop"
+	basePath = "/root"
 	cnn = CNN()
 	cnn.setup_network(64)
 	cnn.train(64,basePath)

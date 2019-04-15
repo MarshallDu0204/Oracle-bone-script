@@ -111,7 +111,7 @@ class Unet:
 	    return tf.Variable(initial_value = initial)
 
 	def weight_variable_alter(self,shape):
-	    initial = tf.truncated_normal(shape,stddev=0.45)
+	    initial = tf.truncated_normal(shape,stddev=0.28)
 	    tf.add_to_collection(name = 'loss',value=tf.contrib.layers.l2_regularizer(self.lamb)(initial))   
 	    return tf.Variable(initial)
 
@@ -575,10 +575,10 @@ class Unet:
 
 
 def main():
-	basePath = "C:/Users/24400/Desktop"
+	basePath = "/root"
 	unet = Unet()
 	unet.setup_network(64,1)
-	#unet.train(64,basePath)
-	unet.estimate(64,basePath)
+	unet.train(64,basePath)
+	#unet.estimate(64,basePath)
 
 main()
