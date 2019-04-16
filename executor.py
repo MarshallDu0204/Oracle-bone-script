@@ -53,6 +53,7 @@ pointList = processInfo()
 img = extract.outline(path)
 image = extract.binaryToImg(img)
 
+extract.printShape()
 
 longList = []
 for element in pointList:
@@ -86,5 +87,6 @@ for temp in longList:
 tempImage = np.array(image,dtype = 'uint8')
 
 tempImage = Image.fromarray(tempImage,'RGB')
+tempImage.save('predict_image1.jpg')
 tempImage.show()
 

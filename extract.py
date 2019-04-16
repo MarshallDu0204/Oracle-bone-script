@@ -5,7 +5,7 @@ import math
 import matplotlib.pyplot as plt
 
 
-path = "C:/Users/24400/Desktop/J18772.jpg"
+path = "C:/Users/24400/Desktop/J13452.jpg"
 
 
 def compressImg(img):
@@ -301,6 +301,7 @@ def printShape():
 	tempImage = np.array(image,dtype = 'uint8')
 
 	tempImage = Image.fromarray(tempImage,'RGB')
+	tempImage.save('predict_image.jpg')
 	tempImage.show()
 
 def getDist(img,point1,point2):

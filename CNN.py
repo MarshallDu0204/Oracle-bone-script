@@ -106,7 +106,7 @@ class CNN:
 	    return tf.nn.max_pool(x,ksize=[1,2,2,1],strides=[1,2,2,1],padding='VALID')
 
 	def merge_img(self,img1,img2):
-		return tf.concat(values = [img1,img2],axis = 1)
+		return tf.concat(values = [img1,img2],axis = 3)
 
 
 	def setup_network(self,batch_size):
@@ -117,7 +117,7 @@ class CNN:
 
 		self.input_label = tf.placeholder(dtype = tf.float32,shape = [batch_size,2])
 
-		#2*96*96*1 --> 192*96*1 --> 96*48*32
+		#2*96*96*1 --> 96*96*1 --> 48*48*32
 
 		with tf.name_scope('first_convolution'):
 
@@ -129,7 +129,7 @@ class CNN:
 
 			#----- convolution -------
 
-			w_conv = self.weight_variable([3,3,1,32])
+			w_conv = self.weight_variable([3,3,2,32])
 			b_conv = self.bias_variable([32])
 
 			X = tf.nn.relu(self.conv2d(X,w_conv)+b_conv)
@@ -139,7 +139,7 @@ class CNN:
 			X = self.max_pooling(X)
 
 
-		#96*48*32 --> 48*24*64
+		#48*48*32 --> 24*24*64
 
 		with tf.name_scope('second_convolution'):
 
@@ -154,7 +154,7 @@ class CNN:
 
 			X = self.max_pooling(X)
 
-		#48*24*64 --> 24*12*128
+		#24*24*64 --> 12*12*128
 
 		with tf.name_scope('third_convolution'):
 
@@ -169,7 +169,7 @@ class CNN:
 
 			X = self.max_pooling(X)
 
-		#24*12*128 --> 12*6*256
+		#12*12*128 --> 6*6*256
 
 		with tf.name_scope('fourth_convolution'):
 
@@ -185,15 +185,15 @@ class CNN:
 			X = self.max_pooling(X)
 
 			
-		#hidden layer 1  12*6*256 --> 1024
+		#hidden layer 1  6*6*256 --> 1024
 
 		with tf.name_scope('hidden_layer_1'):
 
 			#-------reshape---------
 
-			X = tf.reshape(X,[batch_size,12*6*256])
+			X = tf.reshape(X,[batch_size,6*6*256])
 
-			w_conv = self.weight_variable_alter([12*6*256,1024])
+			w_conv = self.weight_variable_alter([6*6*256,1024])
 			b_conv = self.bias_variable([1024])
 
 			X = tf.nn.relu(tf.matmul(X,w_conv)+b_conv)
