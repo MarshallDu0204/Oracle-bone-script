@@ -34,9 +34,13 @@ def readData_single(path):
 
 	image1 = tf.reshape(image1,[96,96,1])
 
+	image1 = tf.cast(image1, tf.float32) * (1. / 255) - 0.5
+
 	image2 = tf.decode_raw(features['img2'],tf.uint8)
 
 	image2 = tf.reshape(image2,[96,96,1])
+
+	image2 = tf.cast(image2, tf.float32) * (1. / 255) - 0.5
 
 	label = tf.cast(features['label'], tf.int32)
 
@@ -85,13 +89,13 @@ class CNN:
 
 
 	def weight_variable_alter(self,shape):
-	    initial = tf.truncated_normal(shape,stddev=0.1)
+	    initial = tf.truncated_normal(shape,stddev=0.2)
 	    tf.add_to_collection(name = 'loss',value=tf.contrib.layers.l2_regularizer(self.lamb)(initial))   
 	    return tf.Variable(initial)
 
 
 	def bias_variable(self,shape):
-	    initial = tf.constant(0.1,shape=shape)
+	    initial = tf.constant(0.0,shape=shape)
 	    return tf.Variable(initial_value = initial)
 
 
@@ -416,10 +420,12 @@ class CNN:
 					originImg = cv2.imdecode(np.fromfile(elementPath,dtype=np.uint8),-1)
 					originImg = compressImg(originImg)
 					originImg = cv2.resize(src = originImg,dsize=(96,96))
+					originImg = originImg/255 - 0.5
 
 					targetImg = cv2.imdecode(np.fromfile(targetPath,dtype=np.uint8),-1)
 					targetImg = compressImg(targetImg)
 					targetImg = cv2.resize(src = targetImg,dsize=(96,96))
+					targetImg = targetImg/255 - 0.5
 
 					origin = []
 					target = []
@@ -459,6 +465,6 @@ def main():
 	cnn.setup_network(64)
 	cnn.train(64,basePath)
 	#cnn.estimate(64,basePath)
-	#cnn.deepEstimate(basePath,64,3,10)
+	#cnn.deepEstimate(basePath,64,5,10)
 
 main()
