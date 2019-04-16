@@ -465,6 +465,6 @@ def main():
 	cnn.setup_network(64)
 	cnn.train(64,basePath)
 	#cnn.estimate(64,basePath)
-	#cnn.deepEstimate(basePath,64,5,10)
+	#cnn.deepEstimate(basePath,64,5,5)
 
 main()
