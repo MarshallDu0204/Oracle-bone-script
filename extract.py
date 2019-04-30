@@ -1,12 +1,9 @@
 import cv2
 from PIL import Image
 import numpy as np
-import math
-import matplotlib.pyplot as plt
 
 
-path = "C:/Users/24400/Desktop/J17522.jpg"
-
+path = 'C:/Users/24400/Desktop/oracle/一/J00002.jpg'
 
 def compressImg(img):
 	sample_image = np.asarray(a=img[:, :, 0], dtype=np.uint8)
@@ -345,7 +342,7 @@ def getDist(img,point1,point2):
 	return 0
 
 closeList = getPair(path)
-with open("C:/Users/24400/Desktop/info.txt","a") as f:
+with open("/root/info.txt","a") as f:
 	for element in closeList:
 		f.write(str(element)+"\n")
 	f.write("-------\n")

@@ -1,8 +1,6 @@
 import cv2
 from PIL import Image
 import numpy as np
-import math
-import matplotlib.pyplot as plt
 import extract
 import os
 
@@ -59,20 +57,22 @@ def isIsolate(img,point):
 		return True
 	return False
 
+syspath = "/root"
+
 def getInfo():
-	with open("C:/Users/24400/Desktop/info.txt","w") as f:
+	with open(syspath+"/info.txt","w") as f:
 		f.write("")
  
-	os.system("python extract.py")
-	os.system("python extract.py")
-	os.system("python extract.py")
-	os.system("python extract.py")
-	os.system("python extract.py")
+	os.system("python3 extract.py")
+	os.system("python3 extract.py")
+	os.system("python3 extract.py")
+	os.system("python3 extract.py")
+	os.system("python3 extract.py")
 
 def processInfo():
 
 	pointList = []
-	with open("C:/Users/24400/Desktop/info.txt","r") as f:
+	with open(syspath+"/info.txt","r") as f:
 		info = f.read()
 		info = info.split("-------")
 		for element in info:
@@ -99,7 +99,7 @@ getInfo()
 pointList = processInfo()
 
 finalResult = extract.getShape2()
-#extract.printShape()
+
 
 img = extract.outline(path)
 image = extract.binaryToImg(img)
@@ -109,12 +109,11 @@ image = extract.binaryToImg(img)
 longList = []
 for element in pointList:
 	x = extract.getDist(image,element[0],element[1])
-	#print(x)
+	
 	if x> 30 and x<100:
 		longList.append(element)
 
 for temp in longList:
-	print(temp)
 	point1 = temp[0]
 	point2 = temp[1]
 	image[point1[0]][point1[1]] = [255,255,255]
@@ -224,7 +223,7 @@ def seperateImg(image,newPointList):
 				for po in newSet:
 					po = po.split(",")
 					newSet = newSet | findAdj(image,po)
-					#print(newSet)
+					
 				index+=1
 			finalResult.append(newSet)
 			removeList = []
@@ -238,7 +237,7 @@ def seperateImg(image,newPointList):
 				if element not in removeList:
 					newList.append(element)
 			newPointList = newList
-			print(len(newPointList))
+			
 	return finalResult
 
 def drawShape(image,pointList):
@@ -258,7 +257,6 @@ def drawShape(image,pointList):
 				tempPair.append(tempValue)
 			j+=1
 		i+=1
-	print(tempPair)
 	newResult = set()
 	tempResult = []
 	for element in tempPair:
@@ -294,8 +292,10 @@ def drawShape(image,pointList):
 		tempImage = np.array(image,dtype = 'uint8')
 
 		tempImage = Image.fromarray(tempImage,'RGB')
-		tempImage.save('predict_image.jpg')
-		tempImage.show()
+		num = os.listdir(syspath+"/singleCompose")
+		num = len(num)
+		savePath = syspath+"/singleCompose/"+str(num)+".jpg"
+		tempImage.save(savePath)
 
 	for element in consistList:
 		i=0
@@ -314,8 +314,10 @@ def drawShape(image,pointList):
 		tempImage = np.array(image,dtype = 'uint8')
 
 		tempImage = Image.fromarray(tempImage,'RGB')
-		tempImage.save('predict_image.jpg')
-		tempImage.show()
+		num = os.listdir(syspath+"/multipleCompose")
+		num = len(num)
+		savePath = syspath+"/multipleCompose/"+str(num)+".jpg"
+		tempImage.save(savePath)
 
 	
 
