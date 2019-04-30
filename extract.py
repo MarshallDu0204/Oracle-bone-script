@@ -5,7 +5,7 @@ import math
 import matplotlib.pyplot as plt
 
 
-path = "C:/Users/24400/Desktop/J13452.jpg"
+path = "C:/Users/24400/Desktop/J17522.jpg"
 
 
 def compressImg(img):
@@ -39,6 +39,20 @@ def binaryToImg(bin):
 def outline(img):
 	img = cv2.imdecode(np.fromfile(path,dtype=np.uint8),-1)
 	img = cv2.resize(src = img,dsize=(96,96))
+	tempImg = []
+	if (len(img[0][0])==4):
+		for x in img:
+			tempArray = []
+			for y in x:
+				temp = y[3]
+				tempX = []
+				tempX.append(temp)
+				tempX.append(temp)
+				tempX.append(temp)
+				tempArray.append(tempX)
+			tempImg.append(tempArray)
+		img = tempImg
+		img = np.array(img,dtype = 'uint8')
 	canny = cv2.Canny(img,200,255)
 	newImg = []
 	for x in canny:
@@ -281,13 +295,20 @@ def getShape(img,concaveList):
 			tempList = newList
 	return finalResult
 
+def getShape2():
+	img = outline(path)
+	image = binaryToImg(img)
+	info = getTarget(path)
+	result = getShape(image,info)
+	finalResult = getShape(image,info)
+	return finalResult
+
 
 def printShape():
 	img = outline(path)
 	image = binaryToImg(img)
 	info = getTarget(path)
 	result = getShape(image,info)
-	#print(isInside(result[0],result[2]))
 	colorSet = [[0,0,255],[0,255,0],[255,0,0],[255,255,0],[0,255,255]]
 	i=0
 	for attr in result:
