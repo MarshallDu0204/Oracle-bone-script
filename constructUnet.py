@@ -92,8 +92,8 @@ def writeToSet2(image_path,label_path):
 			num+=1
 	return num
 
-path1 = "/root/oracle-jpg"
-path2 = "/root/jin-jpg"
+path1 = "/root/oracle"
+path2 = "/root/jin"
 
 chars = os.listdir(path1)
  

@@ -7,8 +7,8 @@ import random
 
 charList = []
 
-oraclePath = "/root/oracle-jpg"
-jinPath = "/root/jin-jpg"
+oraclePath = "/root/oracle"
+jinPath = "/root/jin"
 
 charList = os.listdir(oraclePath)
 
@@ -67,12 +67,12 @@ def writeToSet():
 	train_set_writer = tf.python_io.TFRecordWriter("/root/train_set_cnn.tfrecords")
 	numList = []
 	num = 0
-	while num!=420:
+	while num!=697:
 		numList.append(num)
 		num+=1
 
 	i = 0
-	while i!=420:
+	while i!=697:
 		finalList = []
 		ranList = random.sample(numList,10)
 		falseList = []

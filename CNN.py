@@ -394,9 +394,9 @@ class CNN:
 
 	def deepEstimate(self,basePath,batch_size,index1,index2):
 
-		oraclePath = basePath+"/nonOracle"
+		oraclePath = basePath+"/nonOracle-lite"
 
-		jinPath = basePath+"/nonJin"
+		jinPath = basePath+"/nonJin-lite"
 
 		oracleList = os.listdir(oraclePath)
 
@@ -471,7 +471,12 @@ class CNN:
 
 			
 							
-					print(predict_result) 
+					#print(predict_result)
+
+					with open("solution.txt","a") as f:
+						f.write(str(index1)+" "+str(index2)+" "+str(predict_result)+"\n")
+
+
 		print('Done prediction')
 		
 
@@ -479,8 +484,8 @@ def main():
 	basePath = "/root"
 	cnn = CNN()
 	cnn.setup_network(64)
-	#cnn.train(64,basePath)
+	cnn.train(64,basePath)
 	#cnn.estimate(64,basePath)
-	cnn.deepEstimate(basePath,64,5,5)
-
+	#cnn.deepEstimate(basePath,64,5,5)
+	
 main()
