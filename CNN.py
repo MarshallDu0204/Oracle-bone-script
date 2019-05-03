@@ -11,8 +11,22 @@ def writeInfo(text):
 
 
 def compressImg(img):
-	sample_image = np.asarray(a=img[:, :, 0], dtype=np.uint8)
-	return sample_image
+	if len(img[0][0])==3:
+		sample_image = np.asarray(a=img[:, :, 0], dtype=np.uint8)
+		return sample_image
+	if len(img[0][0])==4:
+		newImg = []
+		i=0
+		while i!=96:
+			tempList = []
+			j=0
+			while j!=96:
+				tempList.append(255-img[i][j][3])
+				j+=1
+			newImg.append(tempList)
+			i+=1
+		img = np.asarray(a = newImg,dtype = np.uint8)
+		return img
 
 
 def readData_single(path):
@@ -321,8 +335,9 @@ class CNN:
 		imgPath1 = path+"/J17522.jpg"
 
 		img1 = cv2.imdecode(np.fromfile(imgPath1,dtype=np.uint8),-1)
-		img1 = compressImg(img1)
 		img1 = cv2.resize(src = img1,dsize=(96,96))
+		img1 = compressImg(img1)
+		
 
 		data1 = img1
 			
@@ -339,8 +354,9 @@ class CNN:
 		imgPath2 = path+"/J17538.jpg"
 
 		img2 = cv2.imdecode(np.fromfile(imgPath2,dtype=np.uint8),-1)
-		img2 = compressImg(img2)
 		img2 = cv2.resize(src = img2,dsize=(96,96))
+		img2 = compressImg(img2)
+		
 
 		data2 = img2
 
@@ -378,9 +394,9 @@ class CNN:
 
 	def deepEstimate(self,basePath,batch_size,index1,index2):
 
-		oraclePath = basePath+"/oracle-jpg"
+		oraclePath = basePath+"/nonOracle"
 
-		jinPath = basePath+"/jin-jpg"
+		jinPath = basePath+"/nonJin"
 
 		oracleList = os.listdir(oraclePath)
 
@@ -418,13 +434,13 @@ class CNN:
 					print(elementPath,targetPath)
 
 					originImg = cv2.imdecode(np.fromfile(elementPath,dtype=np.uint8),-1)
-					originImg = compressImg(originImg)
 					originImg = cv2.resize(src = originImg,dsize=(96,96))
+					originImg = compressImg(originImg)
 					originImg = originImg/255 - 0.5
 
 					targetImg = cv2.imdecode(np.fromfile(targetPath,dtype=np.uint8),-1)
-					targetImg = compressImg(targetImg)
 					targetImg = cv2.resize(src = targetImg,dsize=(96,96))
+					targetImg = compressImg(targetImg)
 					targetImg = targetImg/255 - 0.5
 
 					origin = []
@@ -463,8 +479,8 @@ def main():
 	basePath = "/root"
 	cnn = CNN()
 	cnn.setup_network(64)
-	cnn.train(64,basePath)
+	#cnn.train(64,basePath)
 	#cnn.estimate(64,basePath)
-	#cnn.deepEstimate(basePath,64,5,5)
+	cnn.deepEstimate(basePath,64,5,5)
 
 main()

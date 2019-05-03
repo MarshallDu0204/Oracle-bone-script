@@ -43,8 +43,22 @@ def binaryToImg(bin):
 	return axis
 
 def compressImg(img):
-	sample_image = np.asarray(a=img[:, :, 0], dtype=np.uint8)
-	return sample_image
+	if len(img[0][0])==3:
+		sample_image = np.asarray(a=img[:, :, 0], dtype=np.uint8)
+		return sample_image
+	if len(img[0][0])==4:
+		newImg = []
+		i=0
+		while i!=96:
+			tempList = []
+			j=0
+			while j!=96:
+				tempList.append(255-img[i][j][3])
+				j+=1
+			newImg.append(tempList)
+			i+=1
+		img = np.asarray(a = newImg,dtype = np.uint8)
+		return img
 
 def readData_single(path):
 	path = path+"/train_set_Unet.tfrecords"
@@ -537,8 +551,9 @@ class Unet:
 		imgPath = path+"/J17522.jpg"
 
 		img = cv2.imdecode(np.fromfile(imgPath,dtype=np.uint8),-1)
-		img = compressImg(img)
 		img = cv2.resize(src = img,dsize=(96,96))
+		img = compressImg(img)
+		
 		newImg = []
 		i=0
 		while i!=batch_size:

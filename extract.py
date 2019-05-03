@@ -41,7 +41,7 @@ def outline(img):
 		for x in img:
 			tempArray = []
 			for y in x:
-				temp = y[3]
+				temp = 255-y[3]
 				tempX = []
 				tempX.append(temp)
 				tempX.append(temp)

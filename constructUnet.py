@@ -24,8 +24,22 @@ train_set_writer = tf.python_io.TFRecordWriter("/root/train_set_Unet.tfrecords")
 
 
 def compressImg(img):
-	sample_image = np.asarray(a=img[:, :, 0], dtype=np.uint8)
-	return sample_image
+	if len(img[0][0])==3:
+		sample_image = np.asarray(a=img[:, :, 0], dtype=np.uint8)
+		return sample_image
+	if len(img[0][0])==4:
+		newImg = []
+		i=0
+		while i!=96:
+			tempList = []
+			j=0
+			while j!=96:
+				tempList.append(255-img[i][j][3])
+				j+=1
+			newImg.append(tempList)
+			i+=1
+		img = np.asarray(a = newImg,dtype = np.uint8)
+		return img
 
 def checkNum(img):
 	count = 0
@@ -45,8 +59,9 @@ def writeToSet2(image_path,label_path):
 	for label in tempLabel:
 		tempPath = label_path+"/"+label
 		label_img = cv2.imdecode(np.fromfile(tempPath,dtype=np.uint8),-1)
-		label_img = compressImg(label_img)
 		label_img = cv2.resize(src = label_img,dsize=(96,96))
+		label_img = compressImg(label_img)
+		
 		label_img[label_img <= 150] = 0
 		label_img[label_img > 150] = 1
 		train_label.append(label_img)
@@ -54,8 +69,9 @@ def writeToSet2(image_path,label_path):
 	for img in imgPath:
 		tempImg = image_path+"/"+img
 		train_img = cv2.imdecode(np.fromfile(tempImg,dtype=np.uint8),-1)
-		train_img = compressImg(train_img)
 		train_img = cv2.resize(src = train_img,dsize=(96,96))
+		train_img = compressImg(train_img)
+		
 		train_img[train_img <= 150] = 0
 		train_img[train_img > 150] = 1
 		train.append(train_img)

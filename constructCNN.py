@@ -13,8 +13,22 @@ jinPath = "/root/jin-jpg"
 charList = os.listdir(oraclePath)
 
 def compressImg(img):
-	sample_image = np.asarray(a=img[:, :, 0], dtype=np.uint8)
-	return sample_image
+	if len(img[0][0])==3:
+		sample_image = np.asarray(a=img[:, :, 0], dtype=np.uint8)
+		return sample_image
+	if len(img[0][0])==4:
+		newImg = []
+		i=0
+		while i!=96:
+			tempList = []
+			j=0
+			while j!=96:
+				tempList.append(255-img[i][j][3])
+				j+=1
+			newImg.append(tempList)
+			i+=1
+		img = np.asarray(a = newImg,dtype = np.uint8)
+		return img
 
 def getList(index1,index2):
 	char1 = charList[index1]
@@ -75,11 +89,13 @@ def writeToSet():
 		index = 0
 		while index!=len(sampleList):
 			image1 = cv2.imdecode(np.fromfile(sampleList[index],dtype=np.uint8),-1)
-			image1 = compressImg(image1)
 			image1 = cv2.resize(src = image1,dsize=(96,96))
+			image1 = compressImg(image1)
+			
 			image2 = cv2.imdecode(np.fromfile(targetList[index],dtype=np.uint8),-1)
-			image2 = compressImg(image2)
 			image2 = cv2.resize(src = image2,dsize=(96,96))
+			image2 = compressImg(image2)
+			
 			image1[image1 <= 150] = 0
 			image1[image1 > 150] = 255
 			image2[image2 <= 150] = 0
@@ -114,11 +130,13 @@ def writeToSet():
 		index = 0
 		while index!=len(sampleNum):
 			image1 = cv2.imdecode(np.fromfile(totalSample[index],dtype=np.uint8),-1)
-			image1 = compressImg(image1)
 			image1 = cv2.resize(src = image1,dsize=(96,96))
+			image1 = compressImg(image1)
+			
 			image2 = cv2.imdecode(np.fromfile(totalTarget[index],dtype=np.uint8),-1)
-			image2 = compressImg(image2)
 			image2 = cv2.resize(src = image2,dsize=(96,96))
+			image2 = compressImg(image2)
+			
 			image1[image1 <= 150] = 0
 			image1[image1 > 150] = 255
 			image2[image2 <= 150] = 0
