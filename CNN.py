@@ -394,9 +394,9 @@ class CNN:
 
 	def deepEstimate(self,basePath,batch_size,index1,index2):
 
-		oraclePath = basePath+"/nonOracle-lite"
+		oraclePath = basePath+"/oracle"
 
-		jinPath = basePath+"/nonJin-lite"
+		jinPath = basePath+"/jin"
 
 		oracleList = os.listdir(oraclePath)
 
@@ -484,8 +484,17 @@ def main():
 	basePath = "/root"
 	cnn = CNN()
 	cnn.setup_network(64)
-	cnn.train(64,basePath)
+	
+	#cnn.train(64,basePath)
 	#cnn.estimate(64,basePath)
 	#cnn.deepEstimate(basePath,64,5,5)
-	
+	'''
+	numList = [360, 67, 495, 124, 314, 669, 141, 339, 587, 334, 193, 116, 607, 211, 417, 602, 511, 8, 83, 204]
+	for num in numList:
+		cnn.deepEstimate(basePath,64,int(num),int(num))
+		if int(num)<690:
+			cnn.deepEstimate(basePath,64,int(num),int(num)+5)
+		if int(num)>10:
+			cnn.deepEstimate(basePath,64,int(num),int(num)-5)
+	'''
 main()

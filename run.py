@@ -26,8 +26,8 @@ def changePath(readPath):
 
 fullList = getFullList("/root/oracle")
 
-start = 0
-end = 1000
+start = 1000
+end = len(fullList)
 i=start
 while i!=end:
 	path = fullList[i]
