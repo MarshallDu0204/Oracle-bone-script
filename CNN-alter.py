@@ -61,6 +61,7 @@ def readData_single(path):
 	return image1,image2,label
 
 
+
 class CNN:
 	def __init__(self):
 
@@ -120,7 +121,7 @@ class CNN:
 	    return tf.nn.max_pool(x,ksize=[1,2,2,1],strides=[1,2,2,1],padding='VALID')
 
 	def merge_img(self,img1,img2):
-		return tf.concat(values = [img1,img2],axis = 3)
+		return tf.concat(values = [img1,img2],axis = 1)
 
 
 	def setup_network(self,batch_size):
@@ -131,90 +132,116 @@ class CNN:
 
 		self.input_label = tf.placeholder(dtype = tf.float32,shape = [batch_size,2])
 
-		#2*96*96*1 --> 96*96*1 --> 48*48*32
+		#2*96*96*1 --> 2*48*48*32
 
 		with tf.name_scope('first_convolution'):
 
-			#-------merge img1 and img2 -----------
-
-			mergeImg = self.merge_img(self.input_image1,self.input_image2)
-
-			X = mergeImg
 
 			#----- convolution -------
 
-			w_conv = self.weight_variable([3,3,2,32])
-			b_conv = self.bias_variable([32])
+			w_conv1 = self.weight_variable([3,3,1,32])
+			b_conv1 = self.bias_variable([32])
 
-			X = tf.nn.relu(self.conv2d(X,w_conv)+b_conv)
+			X1 = tf.nn.relu(self.conv2d(self.input_image1,w_conv1)+b_conv1)
+
+			w_conv2 = self.weight_variable([3,3,1,32])
+			b_conv2 = self.bias_variable([32])
+
+			X2 = tf.nn.relu(self.conv2d(self.input_image2,w_conv2)+b_conv2)
 
 			#----- maxpooling ---------
 
-			X = self.max_pooling(X)
+			X1 = self.max_pooling(X1)
 
+			X2 = self.max_pooling(X2)
 
-		#48*48*32 --> 24*24*64
+		#2*48*48*32 --> 2*24*24*64
 
 		with tf.name_scope('second_convolution'):
 
 			#------- convolution --------
 
-			w_conv = self.weight_variable([3,3,32,64])
-			b_conv = self.bias_variable([64])
+			w_conv1 = self.weight_variable([3,3,32,64])
+			b_conv1 = self.bias_variable([64])
 
-			X = tf.nn.relu(self.conv2d(X,w_conv)+b_conv)
+			X1 = tf.nn.relu(self.conv2d(X1,w_conv1)+b_conv1)
+
+			w_conv2 = self.weight_variable([3,3,32,64])
+			b_conv2 = self.bias_variable([64])
+
+			X2 = tf.nn.relu(self.conv2d(X2,w_conv2)+b_conv2)
 
 			#-------maxpooling----------
 
-			X = self.max_pooling(X)
+			X1 = self.max_pooling(X1)
 
-		#24*24*64 --> 12*12*128
+			X2 = self.max_pooling(X2)
+
+		#2*24*24*64 --> 2*12*12*128
 
 		with tf.name_scope('third_convolution'):
 
 			#-------- convolution -------
 
-			w_conv = self.weight_variable([3,3,64,128])
-			b_conv = self.bias_variable([128])
+			w_conv1 = self.weight_variable([3,3,64,128])
+			b_conv1 = self.bias_variable([128])
 
-			X = tf.nn.relu(self.conv2d(X,w_conv)+b_conv)
+			X1 = tf.nn.relu(self.conv2d(X1,w_conv1)+b_conv1)
+
+			w_conv2 = self.weight_variable([3,3,64,128])
+			b_conv2 = self.bias_variable([128])
+
+			X2 = tf.nn.relu(self.conv2d(X2,w_conv2)+b_conv2)
 
 			#-------maxpooling----------
 
-			X = self.max_pooling(X)
+			X1 = self.max_pooling(X1)
 
-		#12*12*128 --> 6*6*256
+			X2 = self.max_pooling(X2)
+
+		#2*12*12*128 --> 2*6*6*256
 
 		with tf.name_scope('fourth_convolution'):
 
 			#-------- convolution -------
 
-			w_conv = self.weight_variable([3,3,128,256])
-			b_conv = self.bias_variable([256])
+			w_conv1 = self.weight_variable([3,3,128,256])
+			b_conv1 = self.bias_variable([256])
 
-			X = tf.nn.relu(self.conv2d(X,w_conv)+b_conv)
+			X1 = tf.nn.relu(self.conv2d(X1,w_conv1)+b_conv1)
+
+			w_conv2 = self.weight_variable([3,3,128,256])
+			b_conv2 = self.bias_variable([256])
+
+			X2 = tf.nn.relu(self.conv2d(X2,w_conv2)+b_conv2)
 
 			#-------maxpooling----------
 
-			X = self.max_pooling(X)
+			X1 = self.max_pooling(X1)
+
+			X2 = self.max_pooling(X2)
 
 			
-		#hidden layer 1  6*6*256 --> 1024
+		#hidden layer 1  2*6*6*256 --> 1024 -->2048
 
 		with tf.name_scope('hidden_layer_1'):
 
 			#-------reshape---------
 
-			X = tf.reshape(X,[batch_size,6*6*256])
+			X1 = tf.reshape(X1,[batch_size,6*6*256])
 
-			w_conv = self.weight_variable_alter([6*6*256,1024])
+			X2 = tf.reshape(X2,[batch_size,6*6*256])
+
+			X = self.merge_img(X1,X2)
+
+			w_conv = self.weight_variable_alter([2*6*6*256,1024])
 			b_conv = self.bias_variable([1024])
 
 			X = tf.nn.relu(tf.matmul(X,w_conv)+b_conv)
 
 			X = tf.nn.dropout(X,keep_prob = self.keep_prob)
 
-		#final layer  1024 -- > 2
+		#final layer  2048 -- > 2
 
 		with tf.name_scope('final_layer'):
 
@@ -249,7 +276,7 @@ class CNN:
 
 	def train(self,batch_size,path):
 
-		ckpt_path = path+"/ckpt-cnn/model.ckpt"
+		ckpt_path = path+"/ckpt-cnn-alter/model.ckpt"
 		
 		tf.summary.scalar("loss", self.loss)
 			
@@ -371,7 +398,7 @@ class CNN:
 
 
 
-		ckpt_path = path+"/ckpt-cnn/model.ckpt"
+		ckpt_path = path+"/ckpt-cnn-alter/model.ckpt"
 
 		all_parameters_saver = tf.train.Saver()
 
@@ -410,7 +437,7 @@ class CNN:
 
 		jinList = os.listdir(jinPath)
 
-		ckpt_path = basePath+"/ckpt-cnn/model.ckpt"
+		ckpt_path = basePath+"/ckpt-cnn-alter/model.ckpt"
 
 		all_parameters_saver = tf.train.Saver()
 
@@ -485,7 +512,7 @@ def main():
 	cnn = CNN()
 	cnn.setup_network(64)
 	
-	#cnn.train(64,basePath)
+	cnn.train(64,basePath)
 	#cnn.estimate(64,basePath)
 	#cnn.deepEstimate(basePath,64,5,5)
 	'''
