@@ -20,10 +20,10 @@ i=0
 for c in clusters:
     elements = c.get_cluster_elements()
     nbr_elements = len(elements)
-    os.mkdir("C:/Users/24400/Desktop/testData/"+str(i))
+    os.mkdir("C:/Users/24400/Desktop/testData1/"+str(i))
     for img in elements:
         originPath = path+str(img)+".jpg"
-        destPath = "C:/Users/24400/Desktop/testData/"+str(i)+"/"+str(img)+".jpg"
+        destPath = "C:/Users/24400/Desktop/testData1/"+str(i)+"/"+str(img)+".jpg"
         shutil.copy(originPath,destPath)
     i+=1
     print(i)

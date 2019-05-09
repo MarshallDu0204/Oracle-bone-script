@@ -38,6 +38,66 @@ for element in infoSet:
 
 	answerValue[element] = count
 
+tpValue = {}
+for element in infoSet:
+	tp = 0
+	for info in infos:
+		info = info.split(" ")
+		temp = info[0]+" "+info[1]
+		if temp == element:
+			if int(info[0])==int(info[1]):
+				if int(info[2])==1:
+					tp+=1
+
+	tpValue[element] = tp
+
+fpValue = {}
+for element in infoSet:
+	fp = 0
+	for info in infos:
+		info = info.split(" ")
+		temp = info[0]+" "+info[1]
+		if temp == element:
+			if int(info[0])!=int(info[1]):
+				if int(info[2])==0:
+					fp+=1
+
+	fpValue[element] = fp
+
+fnValue = {}
+for element in infoSet:
+	fn = 0
+	for info in infos:
+		info = info.split(" ")
+		temp = info[0]+" "+info[1]
+		if temp == element:
+			if int(info[0])!=int(info[1]):
+				if int(info[2])==1:
+					fn+=1
+
+	fnValue[element] = fn
+
+tp = 0
+for element in tpValue:
+	tp+=tpValue[element]
+
+fp = 0
+for element in fpValue:
+	fp+=fpValue[element]
+
+fn = 0
+for element in fnValue:
+	fn+=fnValue[element]
+
+print(tp,fp,fn)
+
+precision = tp/(tp+fp)
+recall = tp/(tp+fn)
+
+print(precision,recall)
+
+
+
 #print(answerValue)
 
 newAnswer = []
